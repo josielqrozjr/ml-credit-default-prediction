@@ -176,11 +176,11 @@ except Exception as e:
 progress.update(1)
 
 # --- 1.2 Merge com labels ---
-# train_labels possui colunas: customer_id, target
+# train_labels possui colunas: customer_ID, target
 progress.set_postfix_str("Merge com labels")
 target_col = 'target'
 
-merge_col = 'customer_id'
+merge_col = 'customer_ID'
 if merge_col not in df.columns:
     raise ValueError(f"Coluna '{merge_col}' nao encontrada no dataset de treino. Colunas: {df.columns.tolist()[:20]}")
 if merge_col not in labels.columns or target_col not in labels.columns:
