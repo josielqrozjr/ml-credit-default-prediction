@@ -1,17 +1,23 @@
 """
-Pipeline de Preparação de Dados com DuckDB
-------------------------------------------
-Este orquestrador lê múltiplos arquivos parquet particionados (data_*.parquet),
-extrai o esquema, monta a query dinâmica de engenharia e agregação, 
-e executa tudo de forma vetorizada.
+Pipeline Híbrido de Preparação de Dados (DuckDB + Polars)
+---------------------------------------------------------
+1. DuckDB: Lê os arquivos brutos particionados e aplica engenharia temporal via SQL.
+2. Handoff: Salva um arquivo Parquet intermediário em disco (para evitar OOM na RAM).
+3. Polars: Lê o arquivo intermediário (Lazy), aplica agregações matemáticas avançadas
+   (trend features) e salva o tabular final.
 """
 
 import os
 import glob
 import duckdb
+import polars as pl
 import logging
+import gc
+
+# Certifique-se de que a EngenhariaTemporal aqui é a versão que gera SQL
 from pipeline.feature_engineering import EngenhariaTemporal
-from pipeline.aggregation import AgregadorCliente
+# E o Agregador é a versão Polars
+from pipeline.aggregation import AgregadorClientePolars
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,71 +26,94 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def main():
-    # Usando o padrão com asterisco (*) para ler todas as partições
+    # ---------------------------------------------------------
+    # CONFIGURAÇÃO DE CAMINHOS
+    # ---------------------------------------------------------
     caminho_input_glob = "./data/raw/parquet/train/data_*.parquet"
     caminho_output_dir = "./data/processed/"
-    caminho_output = os.path.join(caminho_output_dir, "train_tabular_final.parquet")
+    
+    # Arquivos de saída
+    arquivo_intermediario = os.path.join(caminho_output_dir, "temp_temporal.parquet")
+    arquivo_final = os.path.join(caminho_output_dir, "train_tabular_final.parquet")
     
     os.makedirs(caminho_output_dir, exist_ok=True)
     
-    # Validação rápida para garantir que o Python encontrou os arquivos
     arquivos_encontrados = glob.glob(caminho_input_glob)
     if not arquivos_encontrados:
         logger.error(f"Nenhum arquivo encontrado para o padrão: {caminho_input_glob}")
         return
-    logger.info(f"Encontrados {len(arquivos_encontrados)} arquivos particionados para processamento.")
-    
-    # Inicia conexão DuckDB em memória
+    logger.info(f"Encontrados {len(arquivos_encontrados)} arquivos particionados.")
+
+    # =========================================================
+    # FASE 1: DUCKDB (Engenharia Temporal)
+    # =========================================================
+    logger.info("=== INICIANDO FASE 1: DUCKDB ===")
     conn = duckdb.connect(':memory:')
     
-    # ---------------------------------------------------------
-    # 1. Extração do Esquema (Schema) do Parquet
-    # ---------------------------------------------------------
-    logger.info(f"Lendo metadados dos arquivos parquet...")
     try:
-        # O DuckDB lê o schema do primeiro arquivo do glob pattern automaticamente
+        # Extração de Schema
         schema_df = conn.execute(f"DESCRIBE SELECT * FROM read_parquet('{caminho_input_glob}')").df()
         colunas_originais = schema_df['column_name'].tolist()
-        logger.info(f"Esquema unificado carregado. {len(colunas_originais)} colunas encontradas.")
+        
+        # Geração da Query SQL
+        tabela_leitura = f"read_parquet('{caminho_input_glob}')"
+        engenheiro = EngenhariaTemporal()
+        sql_temporal = engenheiro.gerar_sql_temporal(tabela_origem=tabela_leitura, colunas_totais=colunas_originais)
+        
+        # Query de execução e dump para Parquet intermediário
+        query_duckdb = f"""
+        COPY (
+            {sql_temporal}
+        ) TO '{arquivo_intermediario}' (FORMAT PARQUET);
+        """
+        
+        logger.info(f"Executando SQL de Engenharia Temporal e salvando dump intermediário...")
+        conn.execute(query_duckdb)
+        logger.info("Fase 1 (DuckDB) concluída com sucesso.")
+        
     except Exception as e:
-        logger.error(f"Erro ao ler metadados dos parquets: {e}")
+        logger.error(f"Erro na Fase 1 (DuckDB): {e}")
+        return
+    finally:
+        conn.close() # Libera a memória do DuckDB
+        gc.collect()
+
+    # =========================================================
+    # FASE 2: POLARS (Agregação de Clientes com Trend)
+    # =========================================================
+    logger.info("=== INICIANDO FASE 2: POLARS ===")
+    try:
+        agregador = AgregadorClientePolars()
+        
+        # Scan Lazy do arquivo intermediário gerado pelo DuckDB
+        logger.info(f"Lendo dump intermediário ({arquivo_intermediario}) de forma Lazy...")
+        lazy_df = pl.scan_parquet(arquivo_intermediario)
+        
+        # Aplicando a transformação
+        logger.info("Aplicando agregações matemáticas (estatísticas e trends)...")
+        lazy_final = agregador.transformar(lazy_df)
+        
+        # Executando o motor do Polars e salvando o final
+        logger.info(f"Processando e salvando dataset final em: {arquivo_final}")
+        lazy_final.sink_parquet(arquivo_final)
+        logger.info("Fase 2 (Polars) concluída com sucesso.")
+        
+    except Exception as e:
+        logger.error(f"Erro na Fase 2 (Polars): {e}")
         return
 
-    # ---------------------------------------------------------
-    # 2. Geração da Query SQL
-    # ---------------------------------------------------------
-    # Tabela virtual lida diretamente pelo DuckDB agregando todos os data_*.parquet
-    tabela_leitura = f"read_parquet('{caminho_input_glob}')"
-    
-    engenheiro = EngenhariaTemporal()
-    agregador = AgregadorCliente()
-    
-    # Constrói as partes da query baseadas nas classes anteriores
-    sql_temporal = engenheiro.gerar_sql_temporal(tabela_origem=tabela_leitura, colunas_totais=colunas_originais)
-    sql_agregacao = agregador.gerar_sql_agregacao(nome_cte_temporal="cte_temporal", colunas_originais=colunas_originais)
-    
-    # Query Final unificando tudo em CTEs
-    query_final = f"""
-    WITH cte_temporal AS (
-        {sql_temporal}
-    )
-    -- Processa todas as partições em streaming e salva o resultado final em um único Parquet
-    COPY (
-        {sql_agregacao}
-    ) TO '{caminho_output}' (FORMAT PARQUET);
-    """
-
-    # ---------------------------------------------------------
-    # 3. Execução no Motor do DuckDB
-    # ---------------------------------------------------------
-    logger.info("Iniciando execução vetorizada via DuckDB sobre todas as partições. Isso pode levar alguns minutos...")
+    # =========================================================
+    # LIMPEZA
+    # =========================================================
+    logger.info("Limpando arquivos intermediários...")
     try:
-        conn.execute(query_final)
-        logger.info(f"Sucesso! Dataset processado unificado e salvo em: {caminho_output}")
-    except Exception as e:
-        logger.error(f"Erro durante a execução do pipeline DuckDB: {e}")
-    finally:
-        conn.close()
+        if os.path.exists(arquivo_intermediario):
+            os.remove(arquivo_intermediario)
+            logger.info("Arquivo intermediário removido.")
+    except OSError as e:
+        logger.warning(f"Não foi possível remover o arquivo intermediário: {e}")
+
+    logger.info("=== PIPELINE HÍBRIDO FINALIZADO ===")
 
 if __name__ == "__main__":
     main()
