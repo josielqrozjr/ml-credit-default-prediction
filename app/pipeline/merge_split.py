@@ -17,7 +17,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def main():
+def merge_and_split():
     # ---------------------------------------------------------
     # CONFIGURAÇÃO DE CAMINHOS
     # ---------------------------------------------------------
@@ -64,5 +64,8 @@ def main():
     logger.info(f"Arquivos salvos em: {caminho_output_dir}")
     logger.info("=== PIPELINE CONCLUÍDO COM SUCESSO ===")
 
-if __name__ == "__main__":
-    main()
+def main():
+    merge_and_split()
+
+# if __name__ == "__main__":
+#     main()

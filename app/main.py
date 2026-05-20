@@ -72,7 +72,7 @@ def main():
         logger.info("Fase 1 (DuckDB) concluída com sucesso.")
         
     except Exception as e:
-        logger.error(f"Erro na Fase 1 (DuckDB): {e}")
+        logger.exception(f"Erro na Fase 1 (DuckDB): {e}")
         return
     finally:
         conn.close() # Libera a memória do DuckDB
@@ -99,7 +99,7 @@ def main():
         logger.info("Fase 2 (Polars) concluída com sucesso.")
         
     except Exception as e:
-        logger.error(f"Erro na Fase 2 (Polars): {e}")
+        logger.exception(f"Erro na Fase 2 (Polars): {e}")
         return
 
     # =========================================================
@@ -114,6 +114,17 @@ def main():
         logger.warning(f"Não foi possível remover o arquivo intermediário: {e}")
 
     logger.info("=== PIPELINE HÍBRIDO FINALIZADO ===")
+
+    # =========================================================
+    # FASE 3: MERGE E SPLIT ESTRATIFICADO
+    # =========================================================
+    logger.info("=== INICIANDO FASE 3: MERGE E SPLIT ESTRATIFICADO ===")
+    try:
+        from pipeline.merge_split import merge_and_split
+        merge_and_split()
+    except Exception as e:
+        logger.exception(f"Erro na Fase 3 (Merge e Split Estratificado): {e}")
+        return
 
 if __name__ == "__main__":
     main()
