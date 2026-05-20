@@ -278,7 +278,8 @@ progress = tqdm(total=4, desc="Etapa 2/5 - Correlacao + MI", unit="passo")
 
 # --- 2.1 Preencher missing para analise ---
 progress.set_postfix_str("Preenchendo missing")
-X_filled = X_clean.fillna(X_clean.median(numeric_only=True))
+X_filled = X_clean.select_dtypes(include=[np.number]).copy()
+X_filled = X_filled.fillna(X_filled.median())
 progress.update(1)
 
 # --- 2.2 Correlacao com target ---
