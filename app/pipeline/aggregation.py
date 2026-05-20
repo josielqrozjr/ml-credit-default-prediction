@@ -1,16 +1,18 @@
 """
-Módulo de Agregação de Clientes com DuckDB
-------------------------------------------
-Objetivo: Gerar o SQL dinâmico para agregar a série temporal (múltiplas linhas)
-em uma única linha por cliente, extraindo métricas estatísticas essenciais.
+Módulo de Agregação de Clientes (Polars)
+----------------------------------------
+Objetivo: Agregar a série temporal em uma linha por cliente.
+Diferencial: Utiliza o motor do Polars para calcular as 4 métricas de Tendência (Trend)
+de forma performática sem recorrer a SQL dinâmico.
 """
 
+import polars as pl
 import logging
 from typing import List
 
 logger = logging.getLogger(__name__)
 
-class AgregadorCliente:
+class AgregadorClientePolars:
     def __init__(self, col_cliente: str = 'customer_ID', col_data: str = 'S_2'):
         self.col_cliente = col_cliente
         self.col_data = col_data
@@ -19,59 +21,78 @@ class AgregadorCliente:
             'D_126', 'D_63', 'D_64', 'D_66', 'D_68'
         ]
 
-    def gerar_sql_agregacao(self, nome_cte_temporal: str, colunas_originais: List[str]) -> str:
+    def _obter_expressoes_agregacao(self, colunas_originais: List[str]) -> List[pl.Expr]:
         """
-        Constrói o SELECT de agregação (GROUP BY) baseado nos tipos de coluna.
+        Constrói a lista de expressões matemáticas (Lazy) para o Polars executar
+        durante o group_by.
         """
-        logger.info("Gerando SQL para agregação (Group By)...")
-        
-        select_aggs = [self.col_cliente]
-        
+        expressoes = []
         colunas_ignoradas = [self.col_cliente, self.col_data]
         
-        # 1. Agregações para colunas originais e categóricas
         for col in colunas_originais:
             if col in colunas_ignoradas:
                 continue
                 
+            # -------------------------------------------------------------
+            # 1. Agregação de Categóricas
+            # -------------------------------------------------------------
             if col in self.categorical_features:
-                # Categóricas: Último valor conhecido, contagem e valores únicos
-                select_aggs.append(f"LAST_VALUE({col} IGNORE NULLS) OVER (PARTITION BY {self.col_cliente} ORDER BY {self.col_data} ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS {col}_last")
-                select_aggs.append(f"COUNT({col}) AS {col}_count")
-                select_aggs.append(f"COUNT(DISTINCT {col}) AS {col}_nunique")
+                expressoes.extend([
+                    pl.col(col).last().alias(f"{col}_last"),
+                    pl.col(col).n_unique().alias(f"{col}_nunique"),
+                    pl.col(col).count().alias(f"{col}_count")
+                ])
+                
+            # -------------------------------------------------------------
+            # 2. Agregação Numérica (Incluindo as 4 métricas de Trend)
+            # -------------------------------------------------------------
             else:
-                # Numéricas padrão: Média, min, max, desvio padrão e último valor
-                select_aggs.append(f"AVG({col}) AS {col}_mean")
-                select_aggs.append(f"MIN({col}) AS {col}_min")
-                select_aggs.append(f"MAX({col}) AS {col}_max")
-                select_aggs.append(f"STDDEV_SAMP({col}) AS {col}_std")
-                select_aggs.append(f"LAST_VALUE({col} IGNORE NULLS) OVER (PARTITION BY {self.col_cliente} ORDER BY {self.col_data} ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS {col}_last")
+                # Estatísticas Base
+                expressoes.extend([
+                    pl.col(col).mean().alias(f"{col}_mean"),
+                    pl.col(col).std().alias(f"{col}_std"),
+                    pl.col(col).min().alias(f"{col}_min"),
+                    pl.col(col).max().alias(f"{col}_max"),
+                    pl.col(col).last().alias(f"{col}_last")
+                ])
+                
+                # --- TREND 1: Total Delta (Variação Absoluta) ---
+                # Último valor menos o primeiro valor do cliente
+                expressoes.append(
+                    (pl.col(col).last() - pl.col(col).first()).alias(f"{col}_total_delta")
+                )
+                
+                # --- TREND 2: Trend Ratio (Razão de Tendência) ---
+                # Último valor dividido pela média. Somamos 1e-5 para evitar divisão por zero
+                expressoes.append(
+                    (pl.col(col).last() / (pl.col(col).mean() + 1e-5)).alias(f"{col}_trend_ratio")
+                )
+                
+                # --- TREND 3: Positive Ratio (Frequência de Aumento) ---
+                # Quantos % dos meses o valor foi MAIOR que o mês anterior
+                # diff() gera nulos no primeiro mês, preenchemos com 0
+                expressoes.append(
+                    (pl.col(col).diff().fill_null(0.0) > 0).cast(pl.Float32).mean().alias(f"{col}_pos_ratio")
+                )
+                
+                # --- TREND 4: Proxy de Linear Slope (Variação Média Mensal) ---
+                # O Total Delta dividido pela quantidade de meses observados daquele cliente
+                expressoes.append(
+                    ((pl.col(col).last() - pl.col(col).first()) / pl.col(col).count()).alias(f"{col}_avg_monthly_slope")
+                )
 
-        # 2. Agregações para as colunas de "diff1" (geradas na etapa temporal)
-        # Vamos usar apenas colunas numéricas para os diffs
-        features_numericas = [c for c in colunas_originais if c not in colunas_ignoradas and c not in self.categorical_features]
-        for col in features_numericas:
-            col_diff = f"{col}_diff1"
-            select_aggs.append(f"AVG({col_diff}) AS {col_diff}_mean")
-            # Pegando a última diferença (tendência mais recente)
-            select_aggs.append(f"LAST_VALUE({col_diff} IGNORE NULLS) OVER (PARTITION BY {self.col_cliente} ORDER BY {self.col_data} ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS {col_diff}_last")
+        return expressoes
 
-        sql_select = ",\n".join(select_aggs)
+    def transformar(self, df_lazy: pl.LazyFrame) -> pl.LazyFrame:
+        """Executa a agregação utilizando a API Lazy do Polars."""
+        logger.info("Construindo plano de execução Lazy do Polars para Agregação e Tendências...")
         
-        # Note que como usamos Window Functions para pegar o "last_value", 
-        # nós agrupamos e pegamos MAX(col_last) apenas para comprimir a tabela.
-        # Alternativamente, DuckDB permite funções combinadas.
+        # Pega as colunas disponíveis no LazyFrame
+        colunas_originais = df_lazy.collect_schema().names()
         
-        query = f"""
-        SELECT 
-            {self.col_cliente},
-            -- Envelopamos com MAX() e agrupamos para colapsar as linhas do cliente
-            {", ".join([f"MAX({alias.split(' AS ')[1]}) AS {alias.split(' AS ')[1]}" if 'AS' in alias else alias for alias in select_aggs[1:]])}
-        FROM (
-            SELECT 
-                {sql_select}
-            FROM {nome_cte_temporal}
-        ) sub
-        GROUP BY {self.col_cliente}
-        """
-        return query
+        expressoes = self._obter_expressoes_agregacao(colunas_originais)
+        
+        # O group_by no Polars + agg() aplica todas as expressões paralelamente em C++/Rust
+        df_agregado = df_lazy.group_by(self.col_cliente).agg(expressoes)
+        
+        return df_agregado
