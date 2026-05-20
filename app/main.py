@@ -9,8 +9,8 @@ a execução performática out-of-core.
 import os
 import duckdb
 import logging
-from temporal_features import EngenhariaTemporal
-from aggregation import AgregadorCliente
+from pipeline.feature_engineering import EngenhariaTemporal
+from pipeline.aggregation import AgregadorCliente
 
 logging.basicConfig(
     level=logging.INFO,
