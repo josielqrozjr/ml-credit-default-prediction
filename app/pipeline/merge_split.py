@@ -8,8 +8,8 @@ em Treino (80%) e Validação (20%) de forma estratificada.
 import os
 import polars as pl
 import logging
-from merge import MescladorLabels
-from split import SplitterEstratificado
+from pipeline.merge import MescladorLabels
+from pipeline.split import SplitterEstratificado
 
 logging.basicConfig(
     level=logging.INFO,
@@ -71,5 +71,5 @@ def main():
         output_dir="./../../data/processed/"
     )
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
