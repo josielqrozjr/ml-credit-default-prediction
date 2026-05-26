@@ -19,7 +19,7 @@ TRAIN_OUTPUT.mkdir(parents=True, exist_ok=True)
 
 # Quantidade de linhas por row group
 # (ajuste conforme RAM)
-ROW_GROUP_SIZE = 1_000_000
+ROW_GROUP_SIZE = 250_000
 
 # =========================
 # CONEXÃO DUCKDB
@@ -27,8 +27,14 @@ ROW_GROUP_SIZE = 1_000_000
 
 con = duckdb.connect(database=":memory:")
 
-# Melhor uso multicore
-con.execute("PRAGMA threads=4")
+# Menos threads = menos RAM
+con.execute("PRAGMA threads=2")
+
+# Limite de RAM
+con.execute("PRAGMA memory_limit='8GB'")
+
+# Diretório temporário
+con.execute("PRAGMA temp_directory='tmp_duckdb'")
 
 # =========================
 # FUNÇÃO DE CONVERSÃO
@@ -42,16 +48,16 @@ def convert_csv_to_parquet(csv_path, output_dir, dataset_name):
     query = f"""
 COPY (
     SELECT *
-    FROM read_csv_auto(
+    FROM read_csv(
         '{csv_path}',
-        ignore_errors=true,
-        sample_size=-1
+        auto_detect=true,
+        header=true
     )
 )
 TO '{output_dir}'
 (
     FORMAT PARQUET,
-    COMPRESSION ZSTD,
+    COMPRESSION SNAPPY,
     ROW_GROUP_SIZE {ROW_GROUP_SIZE},
     PER_THREAD_OUTPUT,
     OVERWRITE_OR_IGNORE

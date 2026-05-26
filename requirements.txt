@@ -1,6 +1,13 @@
 duckdb
+polars
 numpy
 pandas
 scipy
 matplotlib
 seaborn
+torch
+scikit-learn
+lightgbm
+shap
+tqdm
+pyarrow
