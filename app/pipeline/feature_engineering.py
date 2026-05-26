@@ -1,8 +1,9 @@
 """
 Módulo de Engenharia Temporal com DuckDB
 ----------------------------------------
-Objetivo: Gerar o SQL dinâmico para calcular a diferença (tendência) 
-entre a fatura atual e a anterior usando funções de janela (Window Functions).
+Objetivo: Extrair a tendência sequencial dos dados.
+- Para Numéricas: Calcula a diferença matemática do mês atual para o anterior.
+- Para Categóricas: Calcula uma flag binária se houve mudança de status no mês.
 """
 
 import duckdb
@@ -27,23 +28,42 @@ class EngenhariaTemporal:
 
     def gerar_sql_temporal(self, tabela_origem: str, colunas_totais: List[str]) -> str:
         """
-        Gera a query SQL que calcula a diferença do mês atual para o anterior (LAG).
+        Gera a query SQL com as Window Functions para ambas as tipagens.
         """
         logger.info("Gerando SQL para features temporais (Window Functions)...")
         
         features_numericas = self.obter_colunas_numericas(colunas_totais)
+        # Identifica as categóricas que realmente estão presentes no dataset
+        features_categoricas = [col for col in colunas_totais if col in self.categorical_features]
         
-        # Seleciona todas as colunas originais
+        # Seleciona todas as colunas originais (a base da nossa tabela)
         select_statements = ["*"]
         
-        # Adiciona o cálculo de diff para cada variável numérica
+        # =========================================================
+        # 1. TENDÊNCIA NUMÉRICA (Diferença)
+        # =========================================================
         for col in features_numericas:
-            # Fórmula: Valor Atual - Valor do Mês Anterior (LAG)
             statement = f"""
             ({col} - LAG({col}) OVER (
                 PARTITION BY {self.col_cliente} 
                 ORDER BY {self.col_data}
             )) AS {col}_diff1
+            """
+            select_statements.append(statement)
+
+        # =========================================================
+        # 2. TRANSIÇÃO CATEGÓRICA (Mudança de Estado)
+        # =========================================================
+        for col in features_categoricas:
+            # Lógica: Se o mês anterior for nulo (primeiro mês), a flag é 0.
+            # Se o valor for diferente do mês anterior, a flag é 1 (mudou).
+            # Do contrário, a flag é 0 (manteve o status).
+            statement = f"""
+            CASE 
+                WHEN LAG({col}) OVER (PARTITION BY {self.col_cliente} ORDER BY {self.col_data}) IS NULL THEN 0
+                WHEN {col} != LAG({col}) OVER (PARTITION BY {self.col_cliente} ORDER BY {self.col_data}) THEN 1
+                ELSE 0
+            END AS {col}_changed
             """
             select_statements.append(statement)
             
