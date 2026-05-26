@@ -26,6 +26,12 @@ class SelecionadorFeaturesAMEX:
         self.col_cliente = col_cliente
         self.seed = seed
         
+        # Lista base oficial de categóricas da AMEX
+        self.base_categorical_features = [
+            'B_30', 'B_38', 'D_114', 'D_116', 'D_117', 'D_120', 
+            'D_126', 'D_63', 'D_64', 'D_66', 'D_68'
+        ]
+        
         # Thresholds ultra-permissivos (Filosofia AMEX)
         self.missing_threshold = 0.999  # Só remove se for 100% nulo
         self.variance_threshold = 0.999 # Só remove se o mesmo valor repetir em 99.9% das linhas
@@ -62,10 +68,25 @@ class SelecionadorFeaturesAMEX:
         return df.select(colunas_manter)
 
     def _filtro_lightgbm(self, df: pd.DataFrame) -> List[str]:
-        """Deixa a árvore decidir o que importa, inclusive como tratar nulos."""
+        """Deixa a árvore decidir o que importa, respeitando variáveis categóricas."""
         logger.info("Aplicando Filtro de Importância (LightGBM)...")
         
         features = [c for c in df.columns if c not in [self.col_cliente, self.col_target]]
+        
+        # Mapeando dinamicamente quais features agregadas ainda representam estados categóricos
+        cat_features_ativas = [
+            col for col in features 
+            if any(col.startswith(base) for base in self.base_categorical_features)
+            and col.endswith(('_last', '_first'))
+        ]
+        
+        logger.info(f"Identificadas {len(cat_features_ativas)} colunas categóricas para tratamento nativo.")
+
+        # O Pandas/LightGBM exige que colunas categóricas sejam do tipo 'category'
+        for col in cat_features_ativas:
+            # Preenche nulos provisoriamente com uma string isolada para não quebrar a tipagem
+            df[col] = df[col].fillna('Missing').astype('category')
+
         X = df[features]
         y = df[self.col_target]
 
@@ -82,7 +103,8 @@ class SelecionadorFeaturesAMEX:
             'n_jobs': -1
         }
 
-        train_data = lgb.Dataset(X, label=y)
+        # Informamos as colunas categóricas no parâmetro do Dataset
+        train_data = lgb.Dataset(X, label=y, categorical_feature=cat_features_ativas)
         modelo = lgb.train(lgb_params, train_data, num_boost_round=200)
 
         importancias = modelo.feature_importance(importance_type='gain')
