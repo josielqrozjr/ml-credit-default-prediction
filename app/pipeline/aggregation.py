@@ -2,8 +2,8 @@
 Módulo de Agregação de Clientes (Polars)
 ----------------------------------------
 Objetivo: Agregar a série temporal em uma linha por cliente.
-Diferencial: Utiliza o motor do Polars para calcular as 4 métricas de Tendência (Trend)
-de forma performática sem recorrer a SQL dinâmico.
+Diferencial: Lida de forma inteligente com features numéricas, categóricas 
+originais e as novas flags de mudança de estado geradas na etapa temporal.
 """
 
 import polars as pl
@@ -16,6 +16,8 @@ class AgregadorClientePolars:
     def __init__(self, col_cliente: str = 'customer_ID', col_data: str = 'S_2'):
         self.col_cliente = col_cliente
         self.col_data = col_data
+        
+        # Lista OFICIAL de categóricas da AMEX
         self.categorical_features = [
             'B_30', 'B_38', 'D_114', 'D_116', 'D_117', 'D_120', 
             'D_126', 'D_63', 'D_64', 'D_66', 'D_68'
@@ -23,8 +25,7 @@ class AgregadorClientePolars:
 
     def _obter_expressoes_agregacao(self, colunas_originais: List[str]) -> List[pl.Expr]:
         """
-        Constrói a lista de expressões matemáticas (Lazy) para o Polars executar
-        durante o group_by.
+        Constrói a lista de expressões matemáticas (Lazy) com base no tipo da feature.
         """
         expressoes = []
         colunas_ignoradas = [self.col_cliente, self.col_data]
@@ -34,17 +35,28 @@ class AgregadorClientePolars:
                 continue
                 
             # -------------------------------------------------------------
-            # 1. Agregação de Categóricas
+            # ROTA 1: Agregação de Categóricas Originais
             # -------------------------------------------------------------
             if col in self.categorical_features:
                 expressoes.extend([
+                    pl.col(col).first().alias(f"{col}_first"),
                     pl.col(col).last().alias(f"{col}_last"),
                     pl.col(col).n_unique().alias(f"{col}_nunique"),
                     pl.col(col).count().alias(f"{col}_count")
                 ])
                 
             # -------------------------------------------------------------
-            # 2. Agregação Numérica (Incluindo as 4 métricas de Trend)
+            # ROTA 2: Flags Binárias de Mudança (Geradas no DuckDB)
+            # -------------------------------------------------------------
+            elif col.endswith('_changed'):
+                expressoes.extend([
+                    pl.col(col).sum().alias(f"{col}_total_changes"),
+                    pl.col(col).mean().alias(f"{col}_change_frequency"),
+                    pl.col(col).last().alias(f"{col}_changed_recently")
+                ])
+                
+            # -------------------------------------------------------------
+            # ROTA 3: Agregação Numérica (Originais e _diff1)
             # -------------------------------------------------------------
             else:
                 # Estatísticas Base
@@ -85,7 +97,7 @@ class AgregadorClientePolars:
 
     def transformar(self, df_lazy: pl.LazyFrame) -> pl.LazyFrame:
         """Executa a agregação utilizando a API Lazy do Polars."""
-        logger.info("Construindo plano de execução Lazy do Polars para Agregação e Tendências...")
+        logger.info("Construindo plano de execução Lazy do Polars para Agregação...")
         
         # Pega as colunas disponíveis no LazyFrame
         colunas_originais = df_lazy.collect_schema().names()
