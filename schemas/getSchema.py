@@ -5,7 +5,7 @@ con = duckdb.connect()
 schema = con.execute("""
 DESCRIBE
 SELECT *
-FROM 'data/raw/parquet/train/*0.parquet'; # Ajuste o caminho para um dos arquivos Parquet gerados
+FROM '../data/raw/parquet/train/*.parquet'; -- Ajuste o caminho para um dos arquivos Parquet gerados
 """).fetchdf()
 
-schema.to_csv("schemas/schema.csv", index=False)
+schema.to_csv("schema.csv", index=False)
