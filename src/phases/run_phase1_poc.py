@@ -18,7 +18,7 @@ from xgboost import XGBClassifier
 from imblearn.under_sampling import RandomUnderSampler
 
 # Importações do nosso projeto
-from config import RANDOM_SEED, RESULTS_DIR, DATA_PROCESSED
+from config import RANDOM_SEED, RESULTS_DIR, TRAIN_DATA_PATH, SELECTED_FEATURES_PATH
 from src.evaluation.metrics import evaluate_model
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(message)s")
@@ -129,23 +129,22 @@ def main():
     # O ideal é usar o Polars para ler o parquet pesado e passar para Pandas.
     # =========================================================================
     try:
-        # Exemplo de carregamento (Ajuste para o seu cenário real de I/O)
-        # df_full = pl.read_parquet(DATA_PROCESSED / "train_aggregated.parquet").to_pandas()
-        df_full = pd.read_parquet(DATA_PROCESSED / "train_aggregated.parquet") # Placeholder
+        # Lê a base diretamente da variável do config
+        df_full = pd.read_parquet(TRAIN_DATA_PATH)
         
         # Separa a variável alvo
         y = df_full["target"]
         X_full = df_full.drop(columns=["target"])
         
-        # Carrega a lista de 400 features selecionadas
-        with open(DATA_PROCESSED / "selected_features_list.txt", "r") as f:
+        # Carrega a lista de features mapeada no config
+        with open(SELECTED_FEATURES_PATH, "r") as f:
             selected_cols = [line.strip() for line in f.readlines()]
             
         X_reduced = X_full[selected_cols]
         
     except FileNotFoundError as e:
-        logger.error(f"Arquivo não encontrado: {e}")
-        logger.error("Verifique se os dados agregados e a lista de features estão em 'data/processed/'")
+        logger.exception(f"Arquivo não encontrado: {e.filename}")
+        logger.error("Verifique os caminhos definidos no arquivo config.py")
         sys.exit(1)
 
     # 1. Roda a Prova de Dimensionalidade
