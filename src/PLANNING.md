@@ -4,7 +4,7 @@ Este documento é o guia interno de engenharia para a construção do orquestrad
 
 ## Fase 0: Infraestrutura e Configurações Base
 - [X] Criar `src/evaluation/amex_metric.py` (Implementar a fórmula matemática oficial da AMEX: Gini + Top 4%).
-- [ ] Atualizar `src/evaluation/metrics.py` (Adicionar suporte a `StratifiedKFold` e `AMEX Metric`).
+- [X] Atualizar `src/evaluation/metrics.py` (Adicionar suporte a `StratifiedKFold` e `AMEX Metric`).
 - [ ] Atualizar `src/config.py` (Definir caminhos, *seeds*, dicionário de modelos atualizado, remover modelos descartados, configurar grades do Optuna).
 - [ ] Atualizar arquivos base dos modelos em `src/models/` (Adicionar CatBoost, LightGBM, ajustar pipelines de Stacking/Blending).
 
