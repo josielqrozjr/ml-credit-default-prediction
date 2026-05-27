@@ -1,4 +1,4 @@
-# 🗺️ Roadmap de Desenvolvimento: Benchmark AMEX
+# Roadmap de Desenvolvimento: Benchmark AMEX
 
 Este documento é o guia interno de engenharia para a construção do orquestrador de testes dos classificadores. 
 
