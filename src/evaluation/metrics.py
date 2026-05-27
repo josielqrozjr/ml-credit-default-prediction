@@ -13,6 +13,7 @@ from typing import Dict, Any
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import (
     roc_auc_score, 
+    average_precision_score, 
     f1_score, 
     precision_score, 
     recall_score, 
@@ -24,19 +25,24 @@ from src.evaluation.amex_metric import amex_metric
 
 logger = logging.getLogger(__name__)
 
-def evaluate_model(y_true: np.ndarray, y_pred_proba: np.ndarray, threshold: float = 0.5) -> Dict[str, float]:
+def evaluate_model(y_true: np.ndarray, y_pred_proba: np.ndarray, threshold: float = 0.5) -> Dict[str, Any]:
     """
     Avaliação estática (Holdout) para predições diretas.
     Ideal para as Provas de Conceito (Fase 1) e validação da Base de Teste Final (20%).
     """
     y_pred_bin = (y_pred_proba >= threshold).astype(int)
     
+    # Geração da Matriz de Confusão para exportação e uso no módulo de visualização
+    cm = confusion_matrix(y_true, y_pred_bin)
+    
     metrics = {
         "AMEX_Score": amex_metric(y_true, y_pred_proba),
         "ROC_AUC": roc_auc_score(y_true, y_pred_proba),
+        "AUPRC": average_precision_score(y_true, y_pred_proba), # Cálculo da AUPRC
         "F1_Score": f1_score(y_true, y_pred_bin, zero_division=0),
         "Precision": precision_score(y_true, y_pred_bin, zero_division=0),
-        "Recall": recall_score(y_true, y_pred_bin, zero_division=0)
+        "Recall": recall_score(y_true, y_pred_bin, zero_division=0),
+        "Confusion_Matrix": cm.tolist() # Convertido para lista para facilitar serialização futura
     }
     
     return metrics
