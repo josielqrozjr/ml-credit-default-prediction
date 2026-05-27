@@ -72,3 +72,18 @@ A sua hipótese é: *"As 400 colunas selecionadas pelo LightGBM contêm praticam
 3. **Princípio da Parcimônia (Navalha de Ockham):** Sob a premissa estatística de que modelos mais simples devem ser priorizados quando entregam performance comparável, a manutenção sistêmica de 3.265 variáveis representaria um consumo injustificável de recursos computacionais (RAM e VRAM), lentificando as fases de otimização estendida. Na academia, existe um princípio de que *"entre dois modelos com a mesma performance, o modelo mais simples é sempre o melhor"*.
 
 * Se a Fase 1 provar que 400 colunas entregam o mesmo poder de fogo que 3.000 colunas, manter as 3.000 para o resto do campeonato seria apenas um desperdício injustificável de energia elétrica e memória da GPU. O seu *Feature Selection* criou um novo "Padrão Ouro" de dados para a sua pesquisa.
+
+## 5. Métricas de Avaliação do Benchmark
+
+A avaliação dos classificadores utiliza um conjunto de métricas adequadas para bases com desbalanceamento de classes e aplicáveis ao domínio financeiro. A otimização não depende de uma métrica única, garantindo a análise sob diferentes perspectivas de custo e eficiência.
+
+A tabela a seguir detalha o escopo de avaliação do benchmark:
+
+| Métrica | Descrição e Cálculo | Justificativa no Contexto de Crédito |
+| :--- | :--- | :--- |
+| **Métrica Oficial AMEX** | Média entre o Gini Normalizado Ponderado e a Taxa de Captura nos Top 4% de risco. | Métrica principal (Norte) da Fase 3. Reflete a prioridade do negócio: ordenar os clientes por probabilidade de *default* e identificar os piores ofensores na faixa de maior risco. |
+| **ROC-AUC** | Área sob a curva ROC (Taxa de Verdadeiros Positivos *vs.* Falsos Positivos). | Avalia a capacidade global de separação do modelo entre inadimplentes e bons pagadores, independentemente do limiar (threshold) de corte escolhido. |
+| **AUPRC (Average Precision)** | Área sob a curva de Precision *vs.* Recall. | Métrica superior à ROC-AUC para cenários de alto desbalanceamento. Penaliza duramente modelos que geram muitos falsos positivos na classe minoritária. |
+| **F1-Score** | Média harmônica matemática entre Precision e Recall. | Força o equilíbrio do modelo. Impede que algoritmos obtenham pontuações altas apenas aprovando todos os clientes ou apenas negando crédito para todos. |
+| **Precision (Precisão)** | Verdadeiros Positivos / (Verdadeiros Positivos + Falsos Positivos). | Mede o custo do alarme falso. Baixa precisão indica que o modelo está negando crédito para bons pagadores, gerando perda de receita para a instituição. |
+| **Recall (Sensibilidade)** | Verdadeiros Positivos / (Verdadeiros Positivos + Falsos Negativos). | Mede a capacidade de proteção financeira. Baixo recall indica que o modelo falhou em detectar inadimplentes reais, gerando prejuízo direto por calote. |
