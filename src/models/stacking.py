@@ -2,7 +2,7 @@
 
 from sklearn.ensemble import StackingClassifier
 from sklearn.linear_model import LogisticRegression
-from src.config import RANDOM_SEED, N_SPLITS
+from config import RANDOM_SEED, N_SPLITS
 from src.models.random_forest import build_model as build_rf
 from src.models.xgboost_model import build_model as build_xgb
 from src.models.lightgbm_model import build_model as build_lgb
