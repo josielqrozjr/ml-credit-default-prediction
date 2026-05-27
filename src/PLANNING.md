@@ -9,7 +9,7 @@ Este documento é o guia interno de engenharia para a construção do orquestrad
 - [X] Atualizar arquivos base dos modelos em `src/models/` (Adicionar CatBoost, LightGBM, ajustar pipelines de Stacking/Blending).
 
 ## Fase 1: Provas de Conceito (Validação Metodológica)
-- [ ] Desenvolver `run_phase1_poc.py`.
+- [X] Desenvolver `run_phase1_poc.py`.
 - [ ] Executar LR e XGBoost: Base Completa (3.265 features) *vs.* Base Enxuta (400 features).
 - [ ] Executar LR e XGBoost: Sem Balanceamento *vs.* Undersampling *vs.* Scale Pos Weight / Class Weight.
 - [ ] Exportar tabelas de resultados que justificarão as próximas fases.
