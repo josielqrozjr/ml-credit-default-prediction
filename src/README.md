@@ -48,3 +48,23 @@ Algumas decisões técnicas foram adotadas para garantir a integridade dos resul
 * **Espelhamento de Dimensão:** O filtro de seleção (400 colunas) é calculado apenas na base de treino. A lista resultante (arquivo `.txt`) é usada como máscara para aplicar o mesmo corte nas colunas da base de teste antes da entrada nos modelos. Isso garante conformidade de formato sem vazamento de informação (*data leakage*).
 * **Foco no Balanceamento Algorítmico:** Devido à natureza financeira da base, técnicas de superamostragem (*oversampling*) física, como SMOTE, tendem a criar dados sintéticos irreais. O benchmark priorizará o balanceamento via função de custo (ex: `class_weight` ou `scale_pos_weight`), penalizando matematicamente os erros cometidos na classe minoritária.
 * **Aceleração por Hardware:** Modelos compatíveis (como XGBoost e CatBoost) serão executados via placa de vídeo dedicada (GPU) durante a Fase 3 para viabilizar a otimização de dezenas de hiperparâmetros em tempo hábil.
+
+---
+
+## 4. Defesa Metodológica da Redução de Dimensionalidade
+
+A base completa gerada na etapa de agregação possui 3.265 variáveis. No entanto, ela será utilizada integralmente apenas durante a **Fase 1**. A partir da Fase 2, o benchmark prosseguirá exclusivamente com as 400 variáveis mantidas pelo *Feature Selection*. Essa decisão estrutural baseia-se em três pilares metodológicos:
+
+1. **Validação de Hipótese Empírica:** A Fase 1 atua como prova empírica. Ao comparar a performance da Regressão Logística e do XGBoost na base completa *vs.* base reduzida, o objetivo é confirmar que as 400 variáveis concentram a capacidade preditiva do conjunto, indicando que as 2.865 variáveis eliminadas representam colinearidade ou ruído.
+Em ciência, nós não assumimos que o nosso *Feature Selection* é perfeito; nós provamos isso.
+A sua hipótese é: *"As 400 colunas selecionadas pelo LightGBM contêm praticamente toda a informação útil para prever a inadimplência, e as outras 2.865 colunas são ruído ou redundância"*.
+
+* A Fase 1 existe única e exclusivamente para **comprovar essa hipótese empiricamente**. Quando você rodar o XGBoost com as 3.265 colunas e depois com as 400 colunas, você observará que o ROC-AUC será quase idêntico (ou até melhor na base menor), mas o tempo de treino cairá drasticamente. Uma vez provado isso no papel (com tabelas e números no seu TCC), você não precisa mais carregar o "peso morto" de 2.800 colunas inúteis para o resto da pesquisa.
+
+2. **Mitigação da Maldição da Dimensionalidade:** Executar os 10 algoritmos em mais de 3.000 dimensões causaria falhas algorítmicas pontuais. O cálculo de proximidade geométrica do KNN perde precisão matemática em alta dimensionalidade, enquanto a Regressão Logística e as Redes Neurais (ANN) enfrentariam multicolinearidade extrema, prejudicando a convergência. Avalie o impacto:
+* **KNN:** Ele calcula distâncias geométricas entre os clientes. Em 3.000 dimensões, a matemática do KNN entra em colapso (as distâncias ficam todas iguais). Ele perderia a precisão completamente.
+* **Regressão Logística e Redes Neurais (ANN):** Teriam que calcular pesos para 3.000 variáveis, a grande maioria sendo pura colinearidade (variáveis que dizem a mesma coisa). Isso causaria um *overfitting* violento e problemas de convergência matemática.
+
+3. **Princípio da Parcimônia (Navalha de Ockham):** Sob a premissa estatística de que modelos mais simples devem ser priorizados quando entregam performance comparável, a manutenção sistêmica de 3.265 variáveis representaria um consumo injustificável de recursos computacionais (RAM e VRAM), lentificando as fases de otimização estendida. Na academia, existe um princípio de que *"entre dois modelos com a mesma performance, o modelo mais simples é sempre o melhor"*.
+
+* Se a Fase 1 provar que 400 colunas entregam o mesmo poder de fogo que 3.000 colunas, manter as 3.000 para o resto do campeonato seria apenas um desperdício injustificável de energia elétrica e memória da GPU. O seu *Feature Selection* criou um novo "Padrão Ouro" de dados para a sua pesquisa.
