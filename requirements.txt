@@ -11,3 +11,5 @@ lightgbm
 shap
 tqdm
 pyarrow
+xgboost
+imblearn
