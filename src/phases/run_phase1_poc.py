@@ -18,11 +18,16 @@ from xgboost import XGBClassifier
 from imblearn.under_sampling import RandomUnderSampler
 
 # Importações do nosso projeto
-from config import RANDOM_SEED, RESULTS_DIR, TRAIN_DATA_PATH, SELECTED_FEATURES_PATH
+from config import RANDOM_SEED, RESULTS_DIR, TRAIN_DATA_PATH, SELECTED_FEATURES_PATH, GPU_AVAILABLE, DEVICE
 from src.evaluation.metrics import evaluate_model
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(message)s")
 logger = logging.getLogger(__name__)
+
+logger.info(f"GPU Disponível: {'SIM' if GPU_AVAILABLE else 'NÃO'}")
+if GPU_AVAILABLE:
+    import torch
+    logger.info(f"Dispositivo: {DEVICE} | GPU: {torch.cuda.get_device_name(0)}")
 
 def run_dimensionality_poc(X_full: pd.DataFrame, X_reduced: pd.DataFrame, y: pd.Series):
     """Experimento 1: Maldição da Dimensionalidade e Feature Selection."""
@@ -32,9 +37,14 @@ def run_dimensionality_poc(X_full: pd.DataFrame, X_reduced: pd.DataFrame, y: pd.
     datasets = {"Completa (3265 features)": X_full, "Enxuta (400 features)": X_reduced}
     
     # Instanciamos os modelos com balanceamento algorítmico já ativado
+    xgb_params = {"scale_pos_weight": 3, "n_estimators": 200, "max_depth": 6, "random_state": RANDOM_SEED}
+    if GPU_AVAILABLE:
+        xgb_params["tree_method"] = "gpu_hist"
+        xgb_params["device"] = "cuda"
+
     models = {
         "Logistic Regression": LogisticRegression(class_weight="balanced", max_iter=1000, random_state=RANDOM_SEED),
-        "XGBoost": XGBClassifier(scale_pos_weight=3, n_estimators=200, max_depth=6, random_state=RANDOM_SEED)
+        "XGBoost": XGBClassifier(**xgb_params)
     }
 
     for db_name, X_data in datasets.items():
@@ -83,6 +93,9 @@ def run_balancing_poc(X_reduced: pd.DataFrame, y: pd.Series):
         X_train_run, y_train_run = X_train, y_train
         lr_kwargs = {"max_iter": 1000, "random_state": RANDOM_SEED}
         xgb_kwargs = {"n_estimators": 200, "max_depth": 6, "random_state": RANDOM_SEED}
+        if GPU_AVAILABLE:
+            xgb_kwargs["tree_method"] = "gpu_hist"
+            xgb_kwargs["device"] = "cuda"
 
         if strategy == "Undersampling (Físico)":
             sampler = RandomUnderSampler(random_state=RANDOM_SEED)

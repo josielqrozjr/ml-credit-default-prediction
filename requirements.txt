@@ -1,3 +1,5 @@
+--extra-index-url https://download.pytorch.org/whl/cu130
+
 duckdb
 polars
 numpy
@@ -13,3 +15,4 @@ tqdm
 pyarrow
 xgboost
 imblearn
+catboost

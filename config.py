@@ -9,6 +9,27 @@ de busca do Optuna (Fase 3).
 from pathlib import Path
 
 # =====================================================================
+# 0. Detecção de GPU (PyTorch CUDA)
+# =====================================================================
+try:
+    import torch
+
+    def _check_cuda():
+        try:
+            if torch.cuda.is_available():
+                return True
+            torch.randn(1, device='cuda')
+            return True
+        except Exception:
+            return False
+
+    GPU_AVAILABLE = _check_cuda()
+    DEVICE = torch.device("cuda") if GPU_AVAILABLE else torch.device("cpu")
+except ImportError:
+    GPU_AVAILABLE = False
+    DEVICE = None
+
+# =====================================================================
 # 1. Diretórios e Caminhos
 # =====================================================================
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -64,6 +85,7 @@ HYPERPARAMS = {
         "is_unbalance": True,  # Balanceamento nativo do LGBM
         "random_state": RANDOM_SEED,
         "n_jobs": -1,
+        "device": "gpu" if GPU_AVAILABLE else "cpu",
     },
     "XGBoost": {
         "n_estimators": 200,
@@ -73,6 +95,8 @@ HYPERPARAMS = {
         "eval_metric": "logloss",
         "random_state": RANDOM_SEED,
         "n_jobs": -1,
+        "tree_method": "gpu_hist" if GPU_AVAILABLE else "hist",
+        "device": "cuda" if GPU_AVAILABLE else "cpu",
     },
     "CatBoost": {
         "iterations": 200,
@@ -81,6 +105,7 @@ HYPERPARAMS = {
         "auto_class_weights": "Balanced", # Balanceamento nativo do CatBoost
         "random_seed": RANDOM_SEED,
         "verbose": 0,
+        "task_type": "GPU" if GPU_AVAILABLE else "CPU",
     }
 }
 
