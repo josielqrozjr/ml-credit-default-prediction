@@ -94,8 +94,7 @@ HYPERPARAMS = {
         "scale_pos_weight": 3,  # Proxy de balanceamento (75% / 25%)
         "eval_metric": "logloss",
         "random_state": RANDOM_SEED,
-        "n_jobs": -1,
-        "tree_method": "gpu_hist" if GPU_AVAILABLE else "hist",
+        "tree_method": "hist", # ATUALIZADO: gpu_hist foi depreciado. O novo padrão usa hist + device=cuda.
         "device": "cuda" if GPU_AVAILABLE else "cpu",
     },
     "CatBoost": {
@@ -111,7 +110,6 @@ HYPERPARAMS = {
 
 # =====================================================================
 # 4. Espaços de Busca do Optuna (Fase 3 - Otimização Suprema)
-# Focado exclusivamente nos algoritmos mais robustos (Boosting).
 # =====================================================================
 OPTUNA_GRIDS = {
     "LightGBM": {
