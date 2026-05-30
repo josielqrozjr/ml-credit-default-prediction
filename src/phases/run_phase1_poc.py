@@ -19,7 +19,7 @@ from sklearn.linear_model import LogisticRegression
 from xgboost import XGBClassifier
 from imblearn.under_sampling import RandomUnderSampler
 
-from src.config import RANDOM_SEED, RESULTS_DIR, TRAIN_DATA_PATH, SELECTED_FEATURES_PATH, GPU_AVAILABLE, DEVICE
+from config import RANDOM_SEED, RESULTS_DIR, TRAIN_DATA_PATH, SELECTED_FEATURES_PATH, GPU_AVAILABLE, DEVICE
 from src.evaluation.metrics import evaluate_model
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(message)s")
