@@ -1,18 +1,33 @@
---extra-index-url https://download.pytorch.org/whl/cu130
+--extra-index-url https://download.pytorch.org/whl/cu121
+--extra-index-url https://pypi.nvidia.com
 
-duckdb
-polars
-numpy
+# 1. Ecossistema RAPIDS e GPU (Obrigatórios para a nossa nova arquitetura)
+cudf-cu12
+cuml-cu12
+cupy-cuda12x
+
+# 2. Deep Learning (Alinhado com CUDA 12.1 para evitar conflitos)
+torch
+
+# 3. Modelos de Boosting (Com suporte nativo a GPU)
+xgboost
+lightgbm
+catboost
+
+# 4. Processamento de Dados Tradicional (Mantidos como dependência e fallback)
 pandas
+numpy
 scipy
+polars
+duckdb
+pyarrow
+
+# 5. Machine Learning Tradicional e Utilitários
+scikit-learn
+imblearn
+
+# 6. Visualização e Interpretabilidade
 matplotlib
 seaborn
-torch
-scikit-learn
-lightgbm
 shap
 tqdm
-pyarrow
-xgboost
-imblearn
-catboost
