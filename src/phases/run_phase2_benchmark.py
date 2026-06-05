@@ -33,7 +33,7 @@ BASE_MODELS = [
     #"KNN",
     #"ANN (MLP)",
     #"Random Forest",
-    "XGBoost",
+    #"XGBoost",
     "LightGBM",
     "CatBoost"
 ]
