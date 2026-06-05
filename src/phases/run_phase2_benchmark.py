@@ -126,9 +126,7 @@ def main():
         
         # Executa K-Fold
         for fold, (train_idx, val_idx) in enumerate(skf.split(X, y)):
-            # Retornando para a abordagem com Pandas, mas criando novos dataframes 
-            # do zero a partir dos arrays. Isso quebra qualquer vínculo com a 
-            # memória fragmentada original.
+            # Proteção de memória para o Apple Silicon
             X_train = pd.DataFrame(X.iloc[train_idx].values, columns=X.columns)
             y_train = pd.Series(y.iloc[train_idx].values)
             
@@ -136,6 +134,20 @@ def main():
             
             # Treinamento
             model.fit(X_train, y_train)
+            
+            # Predição (Pegando probabilidade da classe 1)
+            preds = model.predict_proba(X_val)
+            preds_positive = preds[:, 1] if len(preds.shape) > 1 else preds
+            
+            oof_preds[val_idx] = preds_positive
+            
+            # Avalia fold localmente apenas para logar a evolução
+            metrics = evaluate_model(y.iloc[val_idx], preds_positive)
+            fold_metrics_amex.append(metrics["AMEX_Score"])
+            
+            logger.info(f"   Fold {fold+1}/{N_SPLITS} | AMEX: {metrics['AMEX_Score']:.4f}")
+            
+            gc.collect()
             
         total_time = time.time() - start_time
         
