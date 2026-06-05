@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 
 # Definimos os 7 modelos individuais (excluímos os Ensembles que ficam para a Fase 4)
 BASE_MODELS = [
-    "Logistic Regression",
-    "KNN",
-    "ANN (MLP)",
-    "Random Forest",
+    #"Logistic Regression",
+    #"KNN",
+    #"ANN (MLP)",
+    #"Random Forest",
     "XGBoost",
     "LightGBM",
     "CatBoost"
@@ -124,7 +124,7 @@ def main():
         
         fold_metrics_amex = []
         
-# Executa K-Fold
+        # Executa K-Fold
         for fold, (train_idx, val_idx) in enumerate(skf.split(X, y)):
             # Retornando para a abordagem com Pandas, mas criando novos dataframes 
             # do zero a partir dos arrays. Isso quebra qualquer vínculo com a 
