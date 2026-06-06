@@ -35,7 +35,7 @@ Este documento é o guia interno de engenharia para a construção do orquestrad
 - [X] Coletar métricas finais e coroar o modelo campeão absoluto.
 
 ## Fase 5: Relatórios e Visualização
-- [ ] Desenvolver `src/evaluation/visualization.py` (Atualizado).
+- [X] Desenvolver `src/evaluation/visualization.py` (Atualizado).
 - [ ] Gerar gráficos de barras agrupadas (ROC-AUC *vs* AMEX Score).
 - [ ] Gerar curvas Precision-Recall comparativas.
 - [ ] Compilar tabela final unificando Treino (CV), Teste Isolado (20%) e o Intervalo de Confiança da Prova de Estabilidade.
