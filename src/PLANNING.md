@@ -1,0 +1,41 @@
+# Roadmap de Desenvolvimento: Benchmark AMEX
+
+Este documento é o guia interno de engenharia para a construção do orquestrador de testes dos classificadores. 
+
+## Fase 0: Infraestrutura e Configurações Base
+- [X] Criar `src/evaluation/amex_metric.py` (Implementar a fórmula matemática oficial da AMEX: Gini + Top 4%).
+- [X] Atualizar `src/evaluation/metrics.py` (Adicionar suporte a `StratifiedKFold` e `AMEX Metric`).
+- [X] Atualizar `src/config.py` (Definir caminhos, *seeds*, dicionário de modelos atualizado, remover modelos descartados, configurar grades do Optuna).
+- [X] Atualizar arquivos base dos modelos em `src/models/` (Adicionar CatBoost, LightGBM, ajustar pipelines de Stacking/Blending).
+
+## Fase 1: Provas de Conceito (Validação Metodológica)
+- [X] Desenvolver `run_phase1_poc.py`.
+- [X] Executar LR e XGBoost: Base Completa (3.265 features) *vs.* Base Enxuta (400 features).
+- [X] Executar LR e XGBoost: Sem Balanceamento *vs.* Undersampling *vs.* Scale Pos Weight / Class Weight.
+- [X] Exportar tabelas de resultados que justificarão as próximas fases.
+
+## Fase 2: Campeonato Aberto (Baseline dos 10 Modelos)
+- [X] Desenvolver `run_phase2_benchmark.py`.
+- [X] Carregar base de treino enxuta (400 features), aplicar balanceamento algorítmico global.
+- [X] Treinar os 7 modelos individuais (LR, KNN, ANN, RF, XGB, LGBM, CatBoost) com hiperparâmetros default + `StratifiedKFold`.
+- [X] Coletar métricas OOF (Out-Of-Fold) e gerar ranking preliminar pelo AMEX Score.
+
+## Fase 3: Otimização Suprema (Optuna + GPU)
+- [X] Desenvolver `run_phase3_optuna.py`.
+- [X] Isolar automaticamente o "Top 3" modelos da Fase 2 (provavelmente LGBM, XGB e CatBoost).
+- [X] Configurar função objetivo do Optuna maximizando a *AMEX Metric*.
+- [X] Executar otimização bayesiana (ex: 50 a 100 *trials*) utilizando aceleração por GPU.
+- [X] Salvar os hiperparâmetros campeões em disco (`optuna_best_params.json`).
+
+## Fase 4: Meta-Classificadores (O Limite de Performance)
+- [X] Desenvolver `run_phase4_ensembles.py`.
+- [X] Construir *Voting Classifier* (Soft Voting) com os modelos otimizados da Fase 3.
+- [X] Construir *Stacking Classifier* (Garantindo ausência de leakage com CV OOF).
+- [X] Construir *Blending Classifier* (Com holdout explícito).
+- [X] Coletar métricas finais e coroar o modelo campeão absoluto.
+
+## Fase 5: Relatórios e Visualização
+- [X] Desenvolver `src/evaluation/visualization.py` (Atualizado).
+- [X] Gerar gráficos de barras agrupadas (ROC-AUC *vs* AMEX Score).
+- [X] Gerar curvas Precision-Recall comparativas.
+- [X] Compilar tabela final unificando Treino (CV), Teste Isolado (20%) e o Intervalo de Confiança da Prova de Estabilidade.

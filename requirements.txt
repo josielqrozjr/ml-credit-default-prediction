@@ -11,3 +11,8 @@ lightgbm
 shap
 tqdm
 pyarrow
+xgboost
+imblearn
+catboost
+optuna
+gc-python-utils
