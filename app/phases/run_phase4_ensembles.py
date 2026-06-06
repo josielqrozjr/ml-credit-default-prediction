@@ -28,7 +28,7 @@ from config import (
     RANDOM_SEED, RESULTS_DIR, RESULTS_BEST_MODELS, TRAIN_DATA_PATH, 
     SELECTED_FEATURES_PATH, N_SPLITS, GPU_AVAILABLE
 )
-from src.evaluation.metrics import evaluate_model
+from app.evaluation.metrics import evaluate_model
 
 warnings.filterwarnings("ignore")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(message)s")

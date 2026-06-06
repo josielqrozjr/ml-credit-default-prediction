@@ -21,7 +21,7 @@ from sklearn.metrics import (
 )
 
 # Importando a métrica customizada que criamos na Fase 0
-from src.evaluation.amex_metric import amex_metric
+from app.evaluation.amex_metric import amex_metric
 
 logger = logging.getLogger(__name__)
 

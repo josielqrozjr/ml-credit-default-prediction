@@ -35,7 +35,7 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
 RESULTS_DIR = PROJECT_ROOT / "results"
-RESULTS_BEST_MODELS = PROJECT_ROOT / "results_best_models"
+RESULTS_BEST_MODELS = RESULTS_DIR / "best_models"
 
 # Arquivos de Dados Específicos
 TRAIN_DATA_PATH = DATA_PROCESSED / "merge_split" / "train_80.parquet"
@@ -47,7 +47,7 @@ SELECTED_FEATURES_PATH = DATA_PROCESSED / "selection" / "selected_features_list.
 # =====================================================================
 RANDOM_SEED = 42
 N_SPLITS = 5  # Número de partições do StratifiedKFold (Fase 2 e 3)
-TEST_SIZE = 0.20  # 20% da base total isolada para o teste cego final
+TEST_SIZE = 0.20  # 20% da base total isolada para o teste final
 
 # =====================================================================
 # 3. Hiperparâmetros Padrão (Fase 2 - Campeonato Aberto)

@@ -64,7 +64,7 @@ def plot_amex_evolution():
     f4_score = pd.read_csv(f4_path).loc[1, "AMEX Score"] if f4_path.exists() else 0.7920
     
     # Extrai a nota final da Fase 5
-    f5_path = RESULTS_DIR / "phase5_final_blind_test.csv"
+    f5_path = RESULTS_DIR / "phase5_final_test.csv"
     f5_score = pd.read_csv(f5_path)["AMEX_Score"].max() if f5_path.exists() else 0.7931
 
     fases = ["Fase 2\n(Melhor Baseline)", "Fase 4\n(Voting OOF)", "Fase 5\n(Teste e Validação)"]
@@ -92,7 +92,7 @@ def plot_amex_evolution():
 
 def plot_confusion_matrix():
     """Lê a matriz de confusão da Fase 5 e gera um Heatmap."""
-    file_path = RESULTS_DIR / "phase5_final_blind_test.csv"
+    file_path = RESULTS_DIR / "phase5_final_test.csv"
     if not file_path.exists():
         print("Arquivo da Fase 5 não encontrado.")
         return

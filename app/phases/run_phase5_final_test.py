@@ -1,5 +1,5 @@
 """
-Fase 5: O Teste Cego (Produção)
+Fase 5: O Teste Final (Produção)
 ----------------------------------------
 Treina os modelos campeões (otimizados na Fase 3) em 100% da base de treino.
 Avalia a arquitetura final (Voting Classifier) na base de teste isolada (20%),
@@ -25,7 +25,7 @@ from config import (
     RANDOM_SEED, RESULTS_DIR, RESULTS_BEST_MODELS, 
     TRAIN_DATA_PATH, TEST_DATA_PATH, SELECTED_FEATURES_PATH, GPU_AVAILABLE
 )
-from src.evaluation.metrics import evaluate_model
+from app.evaluation.metrics import evaluate_model
 
 warnings.filterwarnings("ignore")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(message)s")
@@ -108,7 +108,7 @@ def load_optimized_models():
 def main():
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     
-    logger.info("=== INICIANDO FASE 5: TESTE CEGO (PRODUÇÃO) ===")
+    logger.info("=== INICIANDO FASE 5: TESTE FINAL (PRODUÇÃO) ===")
     
     try:
         features = get_selected_features()
@@ -159,7 +159,7 @@ def main():
     final_metrics = evaluate_model(y_test, pred_voting)
     
     logger.info("=========================================")
-    logger.info("🏆 RESULTADOS DO TESTE CEGO (PRODUÇÃO) 🏆")
+    logger.info("RESULTADOS DO TESTE FINAL (PRODUÇÃO)")
     logger.info("=========================================")
     logger.info(f" -> AMEX Score Oficial : {final_metrics['AMEX_Score']:.4f}")
     logger.info(f" -> ROC AUC Global     : {final_metrics['ROC_AUC']:.4f}")
@@ -170,7 +170,7 @@ def main():
     # Salva o resultado final para o TCC
     df_final = pd.DataFrame([final_metrics])
     df_final.insert(0, "Modelo", "Voting Classifier (Final)")
-    output_path = RESULTS_DIR / "phase5_final_blind_test.csv"
+    output_path = RESULTS_DIR / "phase5_final_test.csv"
     df_final.to_csv(output_path, index=False)
     logger.info(f"Relatório final salvo em: {output_path}")
 

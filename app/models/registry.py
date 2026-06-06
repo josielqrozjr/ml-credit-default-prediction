@@ -1,12 +1,12 @@
 """Registro central de modelos com interface padronizada."""
 
-from src.models.logistic_regression import build_model as _build_lr
-from src.models.knn import build_model as _build_knn
-from src.models.ann import build_model as _build_ann
-from src.models.random_forest import build_model as _build_rf
-from src.models.xgboost_model import build_model as _build_xgb
-from src.models.lightgbm_model import build_model as _build_lgb
-from src.models.catboost_model import build_model as _build_cat
+from app.models.logistic_regression import build_model as _build_lr
+from app.models.knn import build_model as _build_knn
+from app.models.ann import build_model as _build_ann
+from app.models.random_forest import build_model as _build_rf
+from app.models.xgboost_model import build_model as _build_xgb
+from app.models.lightgbm_model import build_model as _build_lgb
+from app.models.catboost_model import build_model as _build_cat
 from src.models.voting_classifier import build_model as _build_voting
 from src.models.stacking import build_model as _build_stacking
 from src.models.blending import build_model as _build_blending
