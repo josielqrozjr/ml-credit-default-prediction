@@ -34,7 +34,7 @@ Este documento é o guia interno de engenharia para a construção do orquestrad
 - [X] Construir *Blending Classifier* (Com holdout explícito).
 - [X] Coletar métricas finais e coroar o modelo campeão absoluto.
 
-## Fase 6: Relatórios e Visualização
+## Fase 5: Relatórios e Visualização
 - [ ] Desenvolver `src/evaluation/visualization.py` (Atualizado).
 - [ ] Gerar gráficos de barras agrupadas (ROC-AUC *vs* AMEX Score).
 - [ ] Gerar curvas Precision-Recall comparativas.
