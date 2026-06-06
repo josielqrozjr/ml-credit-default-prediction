@@ -67,7 +67,7 @@ def plot_amex_evolution():
     f5_path = RESULTS_DIR / "phase5_final_blind_test.csv"
     f5_score = pd.read_csv(f5_path)["AMEX_Score"].max() if f5_path.exists() else 0.7931
 
-    fases = ["Fase 2\n(Melhor Baseline)", "Fase 4\n(Voting OOF)", "Fase 5\n(Teste Cego)"]
+    fases = ["Fase 2\n(Melhor Baseline)", "Fase 4\n(Voting OOF)", "Fase 5\n(Teste e Validação)"]
     scores = [f2_score, f4_score, f5_score]
     
     plt.figure(figsize=(8, 6))
