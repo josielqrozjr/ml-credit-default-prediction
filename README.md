@@ -15,7 +15,7 @@ ml-credit-default-prediction/
 ├── README.md                         # Este arquivo (descrição geral dos artefatos)
 ├── config.py                         # Configurações globais, hiperparâmetros e caminhos
 ├── requirements.txt                  # Dependências do projeto
-├── train.ipynb                       # Notebook unificado com pipeline completo
+├── main.ipynb                       # Notebook unificado com pipeline completo
 │
 ├── app/                              # Código-fonte completo do projeto
 │   ├── README.md                     # Documentação técnica detalhada do pipeline
@@ -142,7 +142,7 @@ Centraliza **todos** os parâmetros do projeto:
 
 | Artefato | Descrição |
 |----------|-----------|
-| **`train.ipynb`** | Notebook Jupyter que integra e executa todas as fases do projeto em sequência: pipeline de dados, benchmark dos modelos, otimização, ensembles e teste final. Serve como demonstração reproduzível do fluxo completo. |
+| **`main.ipynb`** | Notebook Jupyter que integra e executa todas as fases do projeto em sequência: pipeline de dados, benchmark dos modelos, otimização, ensembles e teste final. Serve como demonstração reproduzível do fluxo completo. |
 
 ---
 
@@ -175,7 +175,7 @@ python -m app.phases.run_phase4_ensembles  # Meta-Classificadores
 python -m app.phases.run_phase5_final_test # Teste Final
 ```
 
-Alternativamente, o notebook `train.ipynb` executa todo o fluxo sequencialmente.
+Alternativamente, o notebook `main.ipynb` executa todo o fluxo sequencialmente.
 
 ---
 
