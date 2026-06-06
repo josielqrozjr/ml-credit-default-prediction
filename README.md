@@ -12,23 +12,23 @@ O pipeline completo abrange desde a ingestão e engenharia de features sobre dad
 
 ```text
 ml-credit-default-prediction/
-├── README.md                          # Este arquivo (descrição geral dos artefatos)
-├── config.py                          # Configurações globais, hiperparâmetros e caminhos
-├── requirements.txt                   # Dependências do projeto
-├── notebook_pipeline_completo.ipynb   # Notebook unificado com pipeline completo
+├── README.md                         # Este arquivo (descrição geral dos artefatos)
+├── config.py                         # Configurações globais, hiperparâmetros e caminhos
+├── requirements.txt                  # Dependências do projeto
+├── notebook_pipeline_completo.ipynb  # Notebook unificado com pipeline completo
 │
-├── app/                               # Pipeline de preparação de dados
-│   ├── main.py                        # Orquestrador principal do pipeline de dados
-│   ├── README.md                      # Documentação técnica detalhada do pipeline
+├── app/                              # Pipeline de preparação de dados
+│   ├── main.py                       # Orquestrador principal do pipeline de dados
+│   ├── README.md                     # Documentação técnica detalhada do pipeline
 │   └── pipeline/
-│       ├── convert_parquet.py         # Conversão CSV → Parquet (DuckDB)
-│       ├── feature_engineering.py     # Engenharia temporal (diff1, changed) via SQL
+│       ├── convert_parquet.py        # Conversão CSV → Parquet (DuckDB)
+│       ├── feature_engineering.py    # Engenharia temporal (diff1, changed) via SQL
 │       ├── aggregation.py            # Agregação por cliente (5.5M linhas → 458K clientes)
 │       ├── merge_split.py            # Merge com labels + split estratificado 80/20
 │       └── feature_selection.py      # Seleção de features (3.265 → 400 via LightGBM)
 │
-├── src/                               # Código-fonte do benchmark e modelos
-│   ├── PLANNING.md                    # Roadmap completo de desenvolvimento
+├── src/                              # Código-fonte do benchmark e modelos
+│   ├── PLANNING.md                   # Roadmap completo de desenvolvimento
 │   ├── evaluation/
 │   │   ├── amex_metric.py            # Métrica oficial AMEX (Gini + Top 4%)
 │   │   ├── metrics.py                # Avaliação OOF e validação cruzada estratificada
@@ -43,40 +43,39 @@ ml-credit-default-prediction/
 │   │   ├── lightgbm_model.py         # LightGBM (is_unbalance=True)
 │   │   └── catboost_model.py         # CatBoost (auto_class_weights=Balanced)
 │   └── phases/
-│       ├── run_phase1_poc.py          # Fase 1: Provas de Conceito
-│       ├── run_phase2_benchmark.py    # Fase 2: Campeonato Aberto (7 modelos)
-│       ├── run_phase3_optuna.py       # Fase 3: Otimização Bayesiana (Optuna)
-│       ├── run_phase4_ensembles.py    # Fase 4: Meta-Classificadores (Ensembles)
-│       └── run_phase5_final_test.py   # Fase 5: Teste Final (Produção)
+│       ├── run_phase1_poc.py         # Fase 1: Provas de Conceito
+│       ├── run_phase2_benchmark.py   # Fase 2: Campeonato Aberto (7 modelos)
+│       ├── run_phase3_optuna.py      # Fase 3: Otimização Bayesiana (Optuna)
+│       ├── run_phase4_ensembles.py   # Fase 4: Meta-Classificadores (Ensembles)
+│       └── run_phase5_final_test.py  # Fase 5: Teste Final (Produção)
 │
-├── data/                              # Dados do projeto
-│   ├── raw/parquet/                   # Dados brutos particionados (Parquet)
-│   │   ├── train/                     # Partições de treino (data_*.parquet)
+├── data/                             # Dados do projeto
+│   ├── raw/parquet/                  # Dados brutos particionados (Parquet)
+│   │   ├── train/                    # Partições de treino (data_*.parquet)
 │   │   └── train_labels/             # Labels de treino (data_*.parquet)
 │   └── processed/
 │       ├── merge_split/              # Datasets processados (train_80 + valid_20)
 │       └── selection/                # Lista de features selecionadas
 │
-├── results/                           # Resultados experimentais
+├── results/                          # Resultados experimentais
 │   ├── poc_01_dimensionalidade.csv   # Resultados POC: Dimensionalidade
 │   ├── poc_02_balanceamento.csv      # Resultados POC: Balanceamento
 │   ├── phase2_benchmark_ranking.csv  # Ranking dos 7 modelos (Fase 2)
 │   ├── phase4_ensembles_ranking.csv  # Ranking dos ensembles (Fase 4)
 │   ├── phase5_final_test.csv         # Métricas finais do teste (Fase 5)
-│   ├── results_phase1.md            # Relatório analítico — Fase 1
-│   ├── results_phase2.md            # Relatório analítico — Fase 2
-│   ├── results_phase3.md            # Relatório analítico — Fase 3
-│   ├── results_phase4.md            # Relatório analítico — Fase 4
-│   ├── results_phase5.md            # Relatório analítico — Fase 5
+│   ├── results_phase1.md             # Relatório analítico — Fase 1
+│   ├── results_phase2.md             # Relatório analítico — Fase 2
+│   ├── results_phase3.md             # Relatório analítico — Fase 3
+│   ├── results_phase4.md             # Relatório analítico — Fase 4
+│   ├── results_phase5.md             # Relatório analítico — Fase 5
+│   ├── best_models/
+│       └── optuna_best_params.json   # Hiperparâmetros campeões (Optuna, Fase 3)
 │   └── plots/
 │       ├── 01_phase2_ranking.png     # Gráfico: Ranking AMEX Score (Fase 2)
 │       ├── 02_amex_evolution.png     # Gráfico: Evolução do score entre fases
 │       └── 03_confusion_matrix.png   # Gráfico: Matriz de confusão final
 │
-├── results_best_models/
-│   └── optuna_best_params.json       # Hiperparâmetros campeões (Optuna, Fase 3)
-│
-└── catboost_info/                     # Logs de treinamento do CatBoost
+└── catboost_info/                    # Logs de treinamento do CatBoost
     ├── catboost_training.json
     └── learn_error.tsv
 ```
