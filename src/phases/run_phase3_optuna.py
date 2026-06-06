@@ -40,7 +40,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | 
 logger = logging.getLogger(__name__)
 
 # Configuração de Trials (Ajuste para 5 ou 10 se for testar no Mac. Use 50 ou 100 na GPU)
-N_TRIALS = 50 
+N_TRIALS = 2 
 
 def load_and_prepare_data():
     """Carrega a base enxuta (400 features)."""
@@ -133,6 +133,14 @@ def objective(trial, model_name, X, y, skf):
                 trial_params[param_name] = trial.suggest_float(param_name, param_config[1], param_config[2], log=True)
             else:
                 trial_params[param_name] = trial.suggest_float(param_name, param_config[1], param_config[2])
+
+    # --- PROTEÇÃO MATEMÁTICA DO LIGHTGBM ---
+    # Garante que num_leaves nunca ultrapasse o limite de 2^max_depth
+    if model_name == "LightGBM" and "max_depth" in trial_params and "num_leaves" in trial_params:
+        max_allowed_leaves = (2 ** trial_params["max_depth"]) - 1
+        # Se o Optuna sugerir 150 folhas, mas a profundidade permitir só 31, cortamos em 31.
+        trial_params["num_leaves"] = min(trial_params["num_leaves"], max_allowed_leaves)
+    # ---------------------------------------
 
     # 2. Instancia o modelo com os parâmetros sugeridos
     model = get_model_instance(model_name, trial_params)
