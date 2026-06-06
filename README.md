@@ -1,138 +1,219 @@
-# Base de Dados para Predição de Inadimplência
+# Predição de Inadimplência com Machine Learning — American Express Default Prediction
 
-## 1. Apresentação
+## 1. Visão Geral do Projeto
 
-Este repositório documenta uma base de dados voltada ao problema de **predição de inadimplência** a partir da competição pública **American Express - Default Prediction** (Kaggle):
+Este repositório contém **todos os artefatos** do projeto de pesquisa em Machine Learning para predição de inadimplência de cartão de crédito, desenvolvido a partir da competição pública [American Express - Default Prediction (Kaggle)](https://www.kaggle.com/competitions/amex-default-prediction/overview).
 
-- Competição: <https://www.kaggle.com/competitions/amex-default-prediction/overview>
+O pipeline completo abrange desde a ingestão e engenharia de features sobre dados brutos até o treinamento, otimização bayesiana e avaliação final de modelos ensemble, resultando em um **Voting Classifier (LightGBM + XGBoost + CatBoost)** com AMEX Score de **0.7931** no teste cego.
 
-O objetivo central é organizar uma estrutura simples e reproduzível para preparação dos dados, com ênfase na conversão de arquivos CSV para o formato Parquet, visando maior eficiência de armazenamento e leitura.
+---
 
-Este projeto tem escopo exclusivo de **disponibilização e padronização da base** para consumo por outros repositórios.
-
-## 2. Contexto do Problema
-
-A tarefa proposta na competição consiste em estimar a probabilidade de um cliente entrar em estado de inadimplência no período de observação definido pelo desafio. Trata-se de um problema supervisionado de classificação binária, no qual:
-
-- a classe positiva representa clientes com default;
-- a classe negativa representa clientes sem default.
-
-Em aplicações financeiras, esse tipo de modelagem é relevante para gestão de risco de crédito, definição de políticas de concessão e monitoramento da carteira.
-
-## 3. Objetivo deste Repositório
-
-Este projeto está orientado para:
-
-- padronizar a organização local dos dados brutos;
-- converter grandes arquivos CSV em Parquet com compressão eficiente;
-- disponibilizar artefatos de dados prontos para serem consumidos por outros repositórios.
-
-### 3.1 Escopo e Fronteira
-
-Este repositório:
-
-- **inclui** ingestão de arquivos CSV, conversão para Parquet e organização da estrutura de dados;
-- **não inclui** experimentação, engenharia de atributos avançada, treinamento, validação ou publicação de modelos.
-
-Essas etapas devem ocorrer em repositórios consumidores, de acordo com os objetivos de cada trabalho.
-
-## 4. Estrutura do Projeto
+## 2. Estrutura do Repositório e Descrição dos Artefatos
 
 ```text
-dataset-creditDefaultPrediction/
-├── convertParquet.py
-├── requirements.txt
-├── README.md
-└── data/
-    ├── raw/                  # entrada esperada para CSVs do Kaggle
-    └── parquet/
-        ├── train/            # saída parquet do conjunto de treino
-        └── test/             # saída parquet do conjunto de teste
+ml-credit-default-prediction/
+├── README.md                          # Este arquivo (descrição geral dos artefatos)
+├── config.py                          # Configurações globais, hiperparâmetros e caminhos
+├── requirements.txt                   # Dependências do projeto
+├── notebook_pipeline_completo.ipynb   # Notebook unificado com pipeline completo
+│
+├── app/                               # Pipeline de preparação de dados
+│   ├── main.py                        # Orquestrador principal do pipeline de dados
+│   ├── README.md                      # Documentação técnica detalhada do pipeline
+│   └── pipeline/
+│       ├── convert_parquet.py         # Conversão CSV → Parquet (DuckDB)
+│       ├── feature_engineering.py     # Engenharia temporal (diff1, changed) via SQL
+│       ├── aggregation.py            # Agregação por cliente (5.5M linhas → 458K clientes)
+│       ├── merge_split.py            # Merge com labels + split estratificado 80/20
+│       └── feature_selection.py      # Seleção de features (3.265 → 400 via LightGBM)
+│
+├── src/                               # Código-fonte do benchmark e modelos
+│   ├── PLANNING.md                    # Roadmap completo de desenvolvimento
+│   ├── evaluation/
+│   │   ├── amex_metric.py            # Métrica oficial AMEX (Gini + Top 4%)
+│   │   ├── metrics.py                # Avaliação OOF e validação cruzada estratificada
+│   │   └── visualization.py          # Geração de gráficos acadêmicos (300 DPI)
+│   ├── models/
+│   │   ├── registry.py               # Registro central dos 10 modelos
+│   │   ├── logistic_regression.py    # Regressão Logística (class_weight=balanced)
+│   │   ├── knn.py                    # K-Nearest Neighbors
+│   │   ├── ann.py                    # Rede Neural MLP (64→32 neurônios)
+│   │   ├── random_forest.py          # Random Forest (n_estimators=150)
+│   │   ├── xgboost_model.py          # XGBoost (GPU-accelerated)
+│   │   ├── lightgbm_model.py         # LightGBM (is_unbalance=True)
+│   │   └── catboost_model.py         # CatBoost (auto_class_weights=Balanced)
+│   └── phases/
+│       ├── run_phase1_poc.py          # Fase 1: Provas de Conceito
+│       ├── run_phase2_benchmark.py    # Fase 2: Campeonato Aberto (7 modelos)
+│       ├── run_phase3_optuna.py       # Fase 3: Otimização Bayesiana (Optuna)
+│       ├── run_phase4_ensembles.py    # Fase 4: Meta-Classificadores (Ensembles)
+│       └── run_phase5_final_test.py   # Fase 5: Teste Cego Final (Produção)
+│
+├── data/                              # Dados do projeto
+│   ├── raw/parquet/                   # Dados brutos particionados (Parquet)
+│   │   ├── train/                     # Partições de treino (data_*.parquet)
+│   │   └── train_labels/             # Labels de treino (data_*.parquet)
+│   └── processed/
+│       ├── merge_split/              # Datasets processados (train_80 + valid_20)
+│       └── selection/                # Lista de features selecionadas
+│
+├── results/                           # Resultados experimentais
+│   ├── poc_01_dimensionalidade.csv   # Resultados POC: Dimensionalidade
+│   ├── poc_02_balanceamento.csv      # Resultados POC: Balanceamento
+│   ├── phase2_benchmark_ranking.csv  # Ranking dos 7 modelos (Fase 2)
+│   ├── phase4_ensembles_ranking.csv  # Ranking dos ensembles (Fase 4)
+│   ├── phase5_final_blind_test.csv   # Métricas finais do teste cego (Fase 5)
+│   ├── results_phase1.md            # Relatório analítico — Fase 1
+│   ├── results_phase2.md            # Relatório analítico — Fase 2
+│   ├── results_phase3.md            # Relatório analítico — Fase 3
+│   ├── results_phase4.md            # Relatório analítico — Fase 4
+│   ├── results_phase5.md            # Relatório analítico — Fase 5
+│   └── plots/
+│       ├── 01_phase2_ranking.png     # Gráfico: Ranking AMEX Score (Fase 2)
+│       ├── 02_amex_evolution.png     # Gráfico: Evolução do score entre fases
+│       └── 03_confusion_matrix.png   # Gráfico: Matriz de confusão final
+│
+├── results_best_models/
+│   └── optuna_best_params.json       # Hiperparâmetros campeões (Optuna, Fase 3)
+│
+└── catboost_info/                     # Logs de treinamento do CatBoost
+    ├── catboost_training.json
+    └── learn_error.tsv
 ```
 
-Observação: as pastas podem ser criadas automaticamente pelo script quando necessário.
+---
 
-## 5. Dados da Competição
+## 3. Descrição Detalhada dos Artefatos Principais
 
-De forma geral, a competição disponibiliza arquivos para treino, teste e submissão. Neste repositório, o script está configurado para processar especificamente:
+### 3.1 Pipeline de Dados (`app/`)
 
-- `train_data.csv`;
-- `test_data.csv`.
+| Artefato | Descrição | Parâmetros / Observações |
+|----------|-----------|--------------------------|
+| **`app/main.py`** | Orquestrador completo do pipeline de dados. Executa sequencialmente: engenharia temporal (DuckDB), agregação por cliente (Polars), merge com labels, split estratificado e seleção de features. | Caminhos de entrada/saída definidos internamente. Executar a partir do diretório `app/`. |
+| **`app/pipeline/feature_engineering.py`** | Gera features temporais via funções de janela SQL (LAG). Para numéricos: `_diff1` (diferença entre meses). Para categóricos: `_changed` (flag de transição). | Utiliza DuckDB in-memory. |
+| **`app/pipeline/aggregation.py`** | Agrega séries temporais em uma linha por cliente. Calcula: mean, std, min, max, last, total_delta, trend_ratio, pos_ratio, avg_monthly_slope. | Transforma ~5.5M linhas em ~458K clientes × 3.264 colunas. |
+| **`app/pipeline/merge_split.py`** | Realiza inner join com labels e split estratificado 80/20 preservando a proporção de inadimplentes. | `test_size=0.20`, `seed=42`. Saída: `train_80.parquet`, `valid_20.parquet`. |
+| **`app/pipeline/feature_selection.py`** | Seleciona as 400 features mais relevantes via importância LightGBM (Gain). Filtra previamente: missing >99.9%, quasi-constantes, correlação >0.98. | `top_lgbm_features=400`, `is_unbalance=True`. |
 
-Esses arquivos devem ser posicionados em `data/raw/` antes da execução.
+### 3.2 Configuração Global (`config.py`)
 
-### 5.1 Observações importantes
+Centraliza **todos** os parâmetros do projeto:
+- Caminhos de dados (`TRAIN_DATA_PATH`, `TEST_DATA_PATH`, `SELECTED_FEATURES_PATH`)
+- Seed de reprodutibilidade (`RANDOM_SEED = 42`)
+- Número de folds (`N_SPLITS = 5`)
+- Hiperparâmetros padrão dos 7 modelos individuais (`HYPERPARAMS`)
+- Espaços de busca Optuna para o Top 3 (`OPTUNA_GRIDS`)
+- Detecção automática de GPU (PyTorch CUDA)
 
-- Os dados da competição não acompanham este repositório por questões de licenciamento e tamanho.
-- O uso da base deve respeitar os termos da plataforma Kaggle e as regras da competição.
+### 3.3 Scripts de Treinamento e Avaliação (`src/phases/`)
 
-## 6. Preparação do Ambiente
+| Script | Descrição | Como Executar |
+|--------|-----------|---------------|
+| **`run_phase1_poc.py`** | Provas de Conceito: (1) valida ganho do Feature Selection (3.265 vs 400 features); (2) compara estratégias de balanceamento. | `python -m src.phases.run_phase1_poc` |
+| **`run_phase2_benchmark.py`** | Campeonato Aberto: avalia 7 modelos individuais via StratifiedKFold (5 folds) com métricas OOF. Gera ranking pelo AMEX Score. | `python -m src.phases.run_phase2_benchmark` |
+| **`run_phase3_optuna.py`** | Otimização Bayesiana: aplica Optuna (50-100 trials) nos 3 melhores modelos da Fase 2. Salva hiperparâmetros campeões em JSON. | `python -m src.phases.run_phase3_optuna` |
+| **`run_phase4_ensembles.py`** | Meta-Classificadores: combina Top 3 otimizados via Soft Voting, Stacking e Blending. Avalia qual arquitetura supera os individuais. | `python -m src.phases.run_phase4_ensembles` |
+| **`run_phase5_final_test.py`** | Teste Cego: treina Voting Classifier em 100% do treino e avalia na base isolada de 20% (91.783 clientes). Produz métricas finais definitivas. | `python -m src.phases.run_phase5_final_test` |
 
-### 6.1 Requisitos
+### 3.4 Módulo de Avaliação (`src/evaluation/`)
 
-- Python 3.10 ou superior (recomendado);
-- Dependência principal: `duckdb`.
+| Artefato | Descrição |
+|----------|-----------|
+| **`amex_metric.py`** | Implementação vetorizada (NumPy) da métrica oficial AMEX = 0.5 × (Gini Normalizado + Taxa de Captura Top 4%). Inclui wrappers para XGBoost e LightGBM. |
+| **`metrics.py`** | Função `evaluate_model()` que retorna AMEX Score, ROC AUC, AUPRC, F1, Precision, Recall e Matriz de Confusão. Função `evaluate_model_cv()` para validação cruzada OOF. |
+| **`visualization.py`** | Gera gráficos acadêmicos em 300 DPI: ranking de modelos, evolução do AMEX Score e matriz de confusão. |
 
-### 6.2 Instalação
+### 3.5 Resultados e Métricas (`results/`)
+
+| Artefato | Descrição |
+|----------|-----------|
+| **`poc_01_dimensionalidade.csv`** | Tabela comparativa: XGBoost e LR em base completa (3.265) vs. enxuta (400 features). |
+| **`poc_02_balanceamento.csv`** | Tabela comparativa: Sem Balanceamento vs. Undersampling vs. Algorítmico. |
+| **`phase2_benchmark_ranking.csv`** | Ranking dos 7 modelos com AMEX Score, ROC AUC, AUPRC, F1 (OOF). |
+| **`phase4_ensembles_ranking.csv`** | Ranking: Voting (0.7920) > Stacking (0.7918) > Blending (0.7943*). |
+| **`phase5_final_blind_test.csv`** | Métricas oficiais do teste cego: AMEX 0.7931, ROC AUC 0.9618, Recall 0.9197. |
+| **`results_phase[1-5].md`** | Relatórios analíticos detalhados de cada fase experimental. |
+| **`plots/*.png`** | Figuras geradas para o artigo científico. |
+
+### 3.6 Modelo Final (`results_best_models/`)
+
+| Artefato | Descrição |
+|----------|-----------|
+| **`optuna_best_params.json`** | Hiperparâmetros otimizados para LightGBM (AMEX: 0.7910), XGBoost (0.7900) e CatBoost (0.7893). Utilizados para instanciar o Voting Classifier final. |
+
+### 3.7 Notebook Unificado
+
+| Artefato | Descrição |
+|----------|-----------|
+| **`notebook_pipeline_completo.ipynb`** | Notebook Jupyter que integra e executa todas as fases do projeto em sequência: pipeline de dados, benchmark dos modelos, otimização, ensembles e teste final. Serve como demonstração reproduzível do fluxo completo. |
+
+---
+
+## 4. Preparação do Ambiente e Execução
+
+### 4.1 Requisitos
+
+- Python 3.10 ou superior
+- GPU CUDA (opcional, para aceleração de XGBoost/LightGBM/CatBoost)
+
+### 4.2 Instalação de Dependências
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 7. Conversão de CSV para Parquet
+### 4.3 Dados da Competição
 
-O arquivo `convertParquet.py` realiza a conversão dos dados brutos para Parquet utilizando DuckDB em memória.
+Os dados brutos da competição devem ser obtidos via [Kaggle](https://www.kaggle.com/competitions/amex-default-prediction/data) e posicionados em `data/raw/parquet/`. Não são incluídos no repositório por questões de licenciamento e tamanho (~50 GB).
 
-### 7.1 Estratégia adotada no script
-
-- leitura dos CSVs com `read_csv_auto`;
-- tolerância a erros de leitura (`ignore_errors=true`);
-- inferência de tipos com varredura completa (`sample_size=-1`);
-- compressão `ZSTD`;
-- escrita paralelizada (`PER_THREAD_OUTPUT`);
-- definição de `ROW_GROUP_SIZE` para controle de desempenho.
-
-### 7.2 Caminhos de entrada e saída
-
-- Entrada esperada:
-  - `data/raw/train_data.csv`
-  - `data/raw/test_data.csv`
-- Saída gerada:
-  - `data/parquet/train/`
-  - `data/parquet/test/`
-
-### 7.3 Execução
+### 4.4 Ordem de Execução Completa
 
 ```bash
-python convertParquet.py
+# 1. Pipeline de Dados (executar a partir de app/)
+cd app && python main.py
+
+# 2. Benchmark e Treinamento (executar a partir da raiz do projeto)
+cd ..
+python -m src.phases.run_phase1_poc        # Provas de Conceito
+python -m src.phases.run_phase2_benchmark  # Campeonato Aberto (7 modelos)
+python -m src.phases.run_phase3_optuna     # Otimização Bayesiana (Optuna)
+python -m src.phases.run_phase4_ensembles  # Meta-Classificadores
+python -m src.phases.run_phase5_final_test # Teste Cego Final
 ```
 
-Ao final, o script imprime o tempo gasto em cada conversão e confirma a conclusão do processo.
+Alternativamente, o notebook `notebook_pipeline_completo.ipynb` executa todo o fluxo sequencialmente.
 
-## 8. Reprodutibilidade e Boas Práticas
+---
 
-Para uso acadêmico, recomenda-se:
+## 5. Resultados Finais
 
-- registrar versões de bibliotecas e do interpretador Python;
-- manter versionamento de dados e scripts de preparação;
-- documentar o contrato de consumo da base (formato, partições, nomes de colunas e convenções);
-- manter rastreabilidade das versões publicadas para os repositórios consumidores.
+| Métrica | Resultado |
+|---------|-----------|
+| **AMEX Score** | **0.7931** |
+| **ROC AUC** | 0.9618 |
+| **AUPRC** | 0.9004 |
+| **F1-Score** | 0.8087 |
+| **Recall** | 0.9197 |
+| **Precision** | 0.7217 |
 
+Modelo final: **Voting Classifier** (média das probabilidades de LightGBM + XGBoost + CatBoost otimizados via Optuna), avaliado em base de teste isolada com 91.783 clientes.
 
-## 9. Limitações Atuais
+---
 
-Por definição de escopo, no momento atual este projeto não inclui:
+## 6. Reprodutibilidade
 
-- notebook de análise exploratória;
-- treinamento e validação de modelos;
+- Seed global: `42` (definida em `config.py`)
+- Split estratificado: 80% treino / 20% teste (preservação da proporção de classes)
+- Validação cruzada: StratifiedKFold com 5 folds
+- Todos os resultados em `results/` são reproduzíveis re-executando os scripts na ordem indicada
 
-Esses itens devem ser implementados posteriormente.
+---
 
-## 10. Referência
+## 7. Referência
 
 American Express. *American Express - Default Prediction* (Kaggle). Disponível em:
 <https://www.kaggle.com/competitions/amex-default-prediction/overview>. Acesso em: 10 maio 2026.
 
-## 11. Licença
+## 8. Licença
 
 Este repositório utiliza a licença definida no arquivo `LICENSE`.
