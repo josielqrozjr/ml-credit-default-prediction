@@ -29,11 +29,11 @@ logger = logging.getLogger(__name__)
 
 # Definimos os 7 modelos individuais (excluímos os Ensembles que ficam para a Fase 4)
 BASE_MODELS = [
-    #"Logistic Regression",
-    #"KNN",
-    #"ANN (MLP)",
-    #"Random Forest",
-    #"XGBoost",
+    "Logistic Regression",
+    "KNN",
+    "ANN (MLP)",
+    "Random Forest",
+    "XGBoost",
     "LightGBM",
     "CatBoost"
 ]
