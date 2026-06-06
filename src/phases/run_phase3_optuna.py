@@ -201,11 +201,23 @@ def main():
             sampler=TPESampler(seed=RANDOM_SEED)
         )
         
-        # Inicia o loop de Trials
+        # --- CALLBACK DE SEGURANÇA (NOVO) ---
+        # Salva o progresso no JSON toda vez que encontrar um hiperparâmetro melhor
+        def save_checkpoint(study, trial):
+            best_params_all[model_name] = {
+                "best_amex_score": study.best_value,
+                "params": study.best_params
+            }
+            with open(RESULTS_BEST_MODELS / "optuna_best_params.json", "w") as f:
+                json.dump(best_params_all, f, indent=4)
+        # ------------------------------------
+
+        # Inicia o loop de Trials com o Callback ativado
         study.optimize(
             lambda trial: objective(trial, model_name, X, y, skf), 
             n_trials=N_TRIALS,
-            n_jobs=1 # Mantemos o Optuna sequencial para não sobrecarregar a RAM com múltiplos CVs simultâneos
+            n_jobs=1,
+            callbacks=[save_checkpoint] # <-- Callback injetado aqui
         )
         
         total_time = time.time() - start_time
