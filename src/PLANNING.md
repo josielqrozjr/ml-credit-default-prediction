@@ -32,7 +32,7 @@ Este documento é o guia interno de engenharia para a construção do orquestrad
 - [X] Construir *Voting Classifier* (Soft Voting) com os modelos otimizados da Fase 3.
 - [X] Construir *Stacking Classifier* (Garantindo ausência de leakage com CV OOF).
 - [X] Construir *Blending Classifier* (Com holdout explícito).
-- [ ] Coletar métricas finais e coroar o modelo campeão absoluto.
+- [X] Coletar métricas finais e coroar o modelo campeão absoluto.
 
 ## Fase 6: Relatórios e Visualização
 - [ ] Desenvolver `src/evaluation/visualization.py` (Atualizado).
