@@ -35,7 +35,7 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
 RESULTS_DIR = PROJECT_ROOT / "results"
-RESULTS_BEST_MODELS = PROJECT_ROOT / "results_best_models"
+RESULTS_BEST_MODELS = RESULTS_DIR / "best_models"
 
 # Arquivos de Dados Específicos
 TRAIN_DATA_PATH = DATA_PROCESSED / "merge_split" / "train_80.parquet"
