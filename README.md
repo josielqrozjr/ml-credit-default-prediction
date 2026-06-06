@@ -15,17 +15,16 @@ ml-credit-default-prediction/
 ├── README.md                         # Este arquivo (descrição geral dos artefatos)
 ├── config.py                         # Configurações globais, hiperparâmetros e caminhos
 ├── requirements.txt                  # Dependências do projeto
-├── notebook_pipeline_completo.ipynb  # Notebook unificado com pipeline completo
+├── train.ipynb                       # Notebook unificado com pipeline completo
 │
-├── app/                              # Pipeline de preparação de dados
-│   ├── main.py                       # Orquestrador principal do pipeline de dados
+├── app/                              # Código-fonte completo do projeto
 │   ├── README.md                     # Documentação técnica detalhada do pipeline
 │   ├── pipeline/
-│   |   ├── convert_parquet.py        # Conversão CSV → Parquet (DuckDB)
-│   |   ├── feature_engineering.py    # Engenharia temporal (diff1, changed) via SQL
-│   |   ├── aggregation.py            # Agregação por cliente (5.5M linhas → 458K clientes)
-│   |   ├── merge_split.py            # Merge com labels + split estratificado 80/20
-│   |   └── feature_selection.py      # Seleção de features (3.265 → 400 via LightGBM)
+│   │   ├── convert_parquet.py        # Conversão CSV → Parquet (DuckDB)
+│   │   ├── feature_engineering.py    # Engenharia temporal (diff1, changed) via SQL
+│   │   ├── aggregation.py            # Agregação por cliente (5.5M linhas → 458K clientes)
+│   │   ├── merge_split.py            # Merge com labels + split estratificado 80/20
+│   │   └── feature_selection.py      # Seleção de features (3.265 → 400 via LightGBM)
 │   ├── evaluation/
 │   │   ├── amex_metric.py            # Métrica oficial AMEX (Gini + Top 4%)
 │   │   ├── metrics.py                # Avaliação OOF e validação cruzada estratificada
@@ -67,7 +66,7 @@ ml-credit-default-prediction/
 │   ├── results_phase4.md             # Relatório analítico — Fase 4
 │   ├── results_phase5.md             # Relatório analítico — Fase 5
 │   ├── best_models/
-│       └── optuna_best_params.json   # Hiperparâmetros campeões (Optuna, Fase 3)
+│   │   └── optuna_best_params.json   # Hiperparâmetros campeões (Optuna, Fase 3)
 │   └── plots/
 │       ├── 01_phase2_ranking.png     # Gráfico: Ranking AMEX Score (Fase 2)
 │       ├── 02_amex_evolution.png     # Gráfico: Evolução do score entre fases
@@ -82,11 +81,11 @@ ml-credit-default-prediction/
 
 ## 3. Descrição Detalhada dos Artefatos Principais
 
-### 3.1 Pipeline de Dados (`app/`)
+### 3.1 Pipeline de Dados (`app/pipeline/`)
 
 | Artefato | Descrição | Parâmetros / Observações |
-|----------|-----------|--------------------------|
-| **`app/main.py`** | Orquestrador completo do pipeline de dados. Executa sequencialmente: engenharia temporal (DuckDB), agregação por cliente (Polars), merge com labels, split estratificado e seleção de features. | Caminhos de entrada/saída definidos internamente. Executar a partir do diretório `app/`. |
+|----------|-----------|---------------------------|
+| **`app/phases/run_phase0_pipeline.py`** | Orquestrador completo do pipeline de dados. Executa sequencialmente: engenharia temporal (DuckDB), agregação por cliente (Polars), merge com labels, split estratificado e seleção de features. | Caminhos de entrada/saída definidos internamente. Executar a partir da raiz do projeto. |
 | **`app/pipeline/feature_engineering.py`** | Gera features temporais via funções de janela SQL (LAG). Para numéricos: `_diff1` (diferença entre meses). Para categóricos: `_changed` (flag de transição). | Utiliza DuckDB in-memory. |
 | **`app/pipeline/aggregation.py`** | Agrega séries temporais em uma linha por cliente. Calcula: mean, std, min, max, last, total_delta, trend_ratio, pos_ratio, avg_monthly_slope. | Transforma ~5.5M linhas em ~458K clientes × 3.264 colunas. |
 | **`app/pipeline/merge_split.py`** | Realiza inner join com labels e split estratificado 80/20 preservando a proporção de inadimplentes. | `test_size=0.20`, `seed=42`. Saída: `train_80.parquet`, `valid_20.parquet`. |
@@ -102,17 +101,18 @@ Centraliza **todos** os parâmetros do projeto:
 - Espaços de busca Optuna para o Top 3 (`OPTUNA_GRIDS`)
 - Detecção automática de GPU (PyTorch CUDA)
 
-### 3.3 Scripts de Treinamento e Avaliação (`src/phases/`)
+### 3.3 Scripts de Treinamento e Avaliação (`app/phases/`)
 
 | Script | Descrição | Como Executar |
 |--------|-----------|---------------|
-| **`run_phase1_poc.py`** | Provas de Conceito: (1) valida ganho do Feature Selection (3.265 vs 400 features); (2) compara estratégias de balanceamento. | `python -m src.phases.run_phase1_poc` |
-| **`run_phase2_benchmark.py`** | Campeonato Aberto: avalia 7 modelos individuais via StratifiedKFold (5 folds) com métricas OOF. Gera ranking pelo AMEX Score. | `python -m src.phases.run_phase2_benchmark` |
-| **`run_phase3_optuna.py`** | Otimização Bayesiana: aplica Optuna (50-100 trials) nos 3 melhores modelos da Fase 2. Salva hiperparâmetros campeões em JSON. | `python -m src.phases.run_phase3_optuna` |
-| **`run_phase4_ensembles.py`** | Meta-Classificadores: combina Top 3 otimizados via Soft Voting, Stacking e Blending. Avalia qual arquitetura supera os individuais. | `python -m src.phases.run_phase4_ensembles` |
-| **`run_phase5_final_test.py`** | Teste Final: treina Voting Classifier em 100% do treino e avalia na base isolada de 20% (91.783 clientes). Produz métricas finais definitivas. | `python -m src.phases.run_phase5_final_test` |
+| **`run_phase0_pipeline.py`** | Pipeline completo de dados: engenharia temporal, agregação, merge, split e seleção de features. | `python -m app.phases.run_phase0_pipeline` |
+| **`run_phase1_poc.py`** | Provas de Conceito: (1) valida ganho do Feature Selection (3.265 vs 400 features); (2) compara estratégias de balanceamento. | `python -m app.phases.run_phase1_poc` |
+| **`run_phase2_benchmark.py`** | Campeonato Aberto: avalia 7 modelos individuais via StratifiedKFold (5 folds) com métricas OOF. Gera ranking pelo AMEX Score. | `python -m app.phases.run_phase2_benchmark` |
+| **`run_phase3_optuna.py`** | Otimização Bayesiana: aplica Optuna (50-100 trials) nos 3 melhores modelos da Fase 2. Salva hiperparâmetros campeões em JSON. | `python -m app.phases.run_phase3_optuna` |
+| **`run_phase4_ensembles.py`** | Meta-Classificadores: combina Top 3 otimizados via Soft Voting, Stacking e Blending. Avalia qual arquitetura supera os individuais. | `python -m app.phases.run_phase4_ensembles` |
+| **`run_phase5_final_test.py`** | Teste Final: treina Voting Classifier em 100% do treino e avalia na base isolada de 20% (91.783 clientes). Produz métricas finais definitivas. | `python -m app.phases.run_phase5_final_test` |
 
-### 3.4 Módulo de Avaliação (`src/evaluation/`)
+### 3.4 Módulo de Avaliação (`app/evaluation/`)
 
 | Artefato | Descrição |
 |----------|-----------|
@@ -142,7 +142,7 @@ Centraliza **todos** os parâmetros do projeto:
 
 | Artefato | Descrição |
 |----------|-----------|
-| **`notebook_pipeline_completo.ipynb`** | Notebook Jupyter que integra e executa todas as fases do projeto em sequência: pipeline de dados, benchmark dos modelos, otimização, ensembles e teste final. Serve como demonstração reproduzível do fluxo completo. |
+| **`train.ipynb`** | Notebook Jupyter que integra e executa todas as fases do projeto em sequência: pipeline de dados, benchmark dos modelos, otimização, ensembles e teste final. Serve como demonstração reproduzível do fluxo completo. |
 
 ---
 
@@ -166,19 +166,16 @@ Os dados brutos da competição devem ser obtidos via [Kaggle](https://www.kaggl
 ### 4.4 Ordem de Execução Completa
 
 ```bash
-# 1. Pipeline de Dados (executar a partir de app/)
-cd app && python main.py
-
-# 2. Benchmark e Treinamento (executar a partir da raiz do projeto)
-cd ..
-python -m src.phases.run_phase1_poc        # Provas de Conceito
-python -m src.phases.run_phase2_benchmark  # Campeonato Aberto (7 modelos)
-python -m src.phases.run_phase3_optuna     # Otimização Bayesiana (Optuna)
-python -m src.phases.run_phase4_ensembles  # Meta-Classificadores
-python -m src.phases.run_phase5_final_test # Teste Final
+# Todas as fases são executadas a partir da raiz do projeto
+python -m app.phases.run_phase0_pipeline   # Pipeline de Dados
+python -m app.phases.run_phase1_poc        # Provas de Conceito
+python -m app.phases.run_phase2_benchmark  # Campeonato Aberto (7 modelos)
+python -m app.phases.run_phase3_optuna     # Otimização Bayesiana (Optuna)
+python -m app.phases.run_phase4_ensembles  # Meta-Classificadores
+python -m app.phases.run_phase5_final_test # Teste Final
 ```
 
-Alternativamente, o notebook `notebook_pipeline_completo.ipynb` executa todo o fluxo sequencialmente.
+Alternativamente, o notebook `train.ipynb` executa todo o fluxo sequencialmente.
 
 ---
 
