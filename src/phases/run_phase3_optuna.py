@@ -40,7 +40,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | 
 logger = logging.getLogger(__name__)
 
 # Configuração de Trials (Ajuste para 5 ou 10 se for testar no Mac. Use 50 ou 100 na GPU)
-N_TRIALS = 2 
+N_TRIALS = 50 if GPU_AVAILABLE else 100
 
 def load_and_prepare_data():
     """Carrega a base enxuta (400 features)."""
