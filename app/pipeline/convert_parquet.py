@@ -76,11 +76,11 @@ TO '{output_dir}'
 # EXECUÇÃO
 # =========================
 
-# convert_csv_to_parquet(
-#     TRAIN_LABELS_CSV,
-#     TRAIN_LABELS_OUTPUT,
-#     "TRAIN_LABELS"
-# )
+convert_csv_to_parquet(
+    TRAIN_LABELS_CSV,
+    TRAIN_LABELS_OUTPUT,
+    "TRAIN_LABELS"
+)
 
 convert_csv_to_parquet(
     TRAIN_CSV,
