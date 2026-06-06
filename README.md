@@ -134,7 +134,7 @@ Centraliza **todos** os parâmetros do projeto:
 | **`results_phase[1-5].md`** | Relatórios analíticos detalhados de cada fase experimental. |
 | **`plots/*.png`** | Figuras geradas para o artigo científico. |
 
-### 3.6 Modelo Final (`results_best_models/`)
+### 3.6 Modelo Final (`results/best_models/`)
 
 | Artefato | Descrição |
 |----------|-----------|
