@@ -15,10 +15,10 @@ Este documento é o guia interno de engenharia para a construção do orquestrad
 - [X] Exportar tabelas de resultados que justificarão as próximas fases.
 
 ## Fase 2: Campeonato Aberto (Baseline dos 10 Modelos)
-- [ ] Desenvolver `run_phase2_benchmark.py`.
-- [ ] Carregar base de treino enxuta (400 features), aplicar balanceamento algorítmico global.
-- [ ] Treinar os 7 modelos individuais (LR, KNN, ANN, RF, XGB, LGBM, CatBoost) com hiperparâmetros default + `StratifiedKFold`.
-- [ ] Coletar métricas OOF (Out-Of-Fold) e gerar ranking preliminar pelo AMEX Score.
+- [X] Desenvolver `run_phase2_benchmark.py`.
+- [X] Carregar base de treino enxuta (400 features), aplicar balanceamento algorítmico global.
+- [X] Treinar os 7 modelos individuais (LR, KNN, ANN, RF, XGB, LGBM, CatBoost) com hiperparâmetros default + `StratifiedKFold`.
+- [X] Coletar métricas OOF (Out-Of-Fold) e gerar ranking preliminar pelo AMEX Score.
 
 ## Fase 3: Otimização Suprema (Optuna + GPU)
 - [ ] Desenvolver `run_phase3_optuna.py`.
