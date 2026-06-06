@@ -20,15 +20,12 @@ ml-credit-default-prediction/
 ├── app/                              # Pipeline de preparação de dados
 │   ├── main.py                       # Orquestrador principal do pipeline de dados
 │   ├── README.md                     # Documentação técnica detalhada do pipeline
-│   └── pipeline/
-│       ├── convert_parquet.py        # Conversão CSV → Parquet (DuckDB)
-│       ├── feature_engineering.py    # Engenharia temporal (diff1, changed) via SQL
-│       ├── aggregation.py            # Agregação por cliente (5.5M linhas → 458K clientes)
-│       ├── merge_split.py            # Merge com labels + split estratificado 80/20
-│       └── feature_selection.py      # Seleção de features (3.265 → 400 via LightGBM)
-│
-├── src/                              # Código-fonte do benchmark e modelos
-│   ├── PLANNING.md                   # Roadmap completo de desenvolvimento
+│   ├── pipeline/
+│   |   ├── convert_parquet.py        # Conversão CSV → Parquet (DuckDB)
+│   |   ├── feature_engineering.py    # Engenharia temporal (diff1, changed) via SQL
+│   |   ├── aggregation.py            # Agregação por cliente (5.5M linhas → 458K clientes)
+│   |   ├── merge_split.py            # Merge com labels + split estratificado 80/20
+│   |   └── feature_selection.py      # Seleção de features (3.265 → 400 via LightGBM)
 │   ├── evaluation/
 │   │   ├── amex_metric.py            # Métrica oficial AMEX (Gini + Top 4%)
 │   │   ├── metrics.py                # Avaliação OOF e validação cruzada estratificada
@@ -43,6 +40,7 @@ ml-credit-default-prediction/
 │   │   ├── lightgbm_model.py         # LightGBM (is_unbalance=True)
 │   │   └── catboost_model.py         # CatBoost (auto_class_weights=Balanced)
 │   └── phases/
+│       ├── run_phase0_pipeline.py    # Fase 0: Pipeline completo (DuckDB + Polars + Merge + Feature Selection)
 │       ├── run_phase1_poc.py         # Fase 1: Provas de Conceito
 │       ├── run_phase2_benchmark.py   # Fase 2: Campeonato Aberto (7 modelos)
 │       ├── run_phase3_optuna.py      # Fase 3: Otimização Bayesiana (Optuna)
