@@ -36,6 +36,6 @@ Este documento é o guia interno de engenharia para a construção do orquestrad
 
 ## Fase 5: Relatórios e Visualização
 - [X] Desenvolver `src/evaluation/visualization.py` (Atualizado).
-- [ ] Gerar gráficos de barras agrupadas (ROC-AUC *vs* AMEX Score).
-- [ ] Gerar curvas Precision-Recall comparativas.
-- [ ] Compilar tabela final unificando Treino (CV), Teste Isolado (20%) e o Intervalo de Confiança da Prova de Estabilidade.
+- [X] Gerar gráficos de barras agrupadas (ROC-AUC *vs* AMEX Score).
+- [X] Gerar curvas Precision-Recall comparativas.
+- [X] Compilar tabela final unificando Treino (CV), Teste Isolado (20%) e o Intervalo de Confiança da Prova de Estabilidade.
