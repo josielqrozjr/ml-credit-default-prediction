@@ -4,7 +4,7 @@
 
 Este repositório contém **todos os artefatos** do projeto de pesquisa em Machine Learning para predição de inadimplência de cartão de crédito, desenvolvido a partir da competição pública [American Express - Default Prediction (Kaggle)](https://www.kaggle.com/competitions/amex-default-prediction/overview).
 
-O pipeline completo abrange desde a ingestão e engenharia de features sobre dados brutos até o treinamento, otimização bayesiana e avaliação final de modelos ensemble, resultando em um **Voting Classifier (LightGBM + XGBoost + CatBoost)** com AMEX Score de **0.7931** no teste cego.
+O pipeline completo abrange desde a ingestão e engenharia de features sobre dados brutos até o treinamento, otimização bayesiana e avaliação final de modelos ensemble, resultando em um **Voting Classifier (LightGBM + XGBoost + CatBoost)** com AMEX Score de **0.7931** no teste final.
 
 ---
 
@@ -47,7 +47,7 @@ ml-credit-default-prediction/
 │       ├── run_phase2_benchmark.py    # Fase 2: Campeonato Aberto (7 modelos)
 │       ├── run_phase3_optuna.py       # Fase 3: Otimização Bayesiana (Optuna)
 │       ├── run_phase4_ensembles.py    # Fase 4: Meta-Classificadores (Ensembles)
-│       └── run_phase5_final_test.py   # Fase 5: Teste Cego Final (Produção)
+│       └── run_phase5_final_test.py   # Fase 5: Teste Final (Produção)
 │
 ├── data/                              # Dados do projeto
 │   ├── raw/parquet/                   # Dados brutos particionados (Parquet)
@@ -62,7 +62,7 @@ ml-credit-default-prediction/
 │   ├── poc_02_balanceamento.csv      # Resultados POC: Balanceamento
 │   ├── phase2_benchmark_ranking.csv  # Ranking dos 7 modelos (Fase 2)
 │   ├── phase4_ensembles_ranking.csv  # Ranking dos ensembles (Fase 4)
-│   ├── phase5_final_blind_test.csv   # Métricas finais do teste cego (Fase 5)
+│   ├── phase5_final_test.csv         # Métricas finais do teste (Fase 5)
 │   ├── results_phase1.md            # Relatório analítico — Fase 1
 │   ├── results_phase2.md            # Relatório analítico — Fase 2
 │   ├── results_phase3.md            # Relatório analítico — Fase 3
@@ -113,7 +113,7 @@ Centraliza **todos** os parâmetros do projeto:
 | **`run_phase2_benchmark.py`** | Campeonato Aberto: avalia 7 modelos individuais via StratifiedKFold (5 folds) com métricas OOF. Gera ranking pelo AMEX Score. | `python -m src.phases.run_phase2_benchmark` |
 | **`run_phase3_optuna.py`** | Otimização Bayesiana: aplica Optuna (50-100 trials) nos 3 melhores modelos da Fase 2. Salva hiperparâmetros campeões em JSON. | `python -m src.phases.run_phase3_optuna` |
 | **`run_phase4_ensembles.py`** | Meta-Classificadores: combina Top 3 otimizados via Soft Voting, Stacking e Blending. Avalia qual arquitetura supera os individuais. | `python -m src.phases.run_phase4_ensembles` |
-| **`run_phase5_final_test.py`** | Teste Cego: treina Voting Classifier em 100% do treino e avalia na base isolada de 20% (91.783 clientes). Produz métricas finais definitivas. | `python -m src.phases.run_phase5_final_test` |
+| **`run_phase5_final_test.py`** | Teste Final: treina Voting Classifier em 100% do treino e avalia na base isolada de 20% (91.783 clientes). Produz métricas finais definitivas. | `python -m src.phases.run_phase5_final_test` |
 
 ### 3.4 Módulo de Avaliação (`src/evaluation/`)
 
@@ -131,7 +131,7 @@ Centraliza **todos** os parâmetros do projeto:
 | **`poc_02_balanceamento.csv`** | Tabela comparativa: Sem Balanceamento vs. Undersampling vs. Algorítmico. |
 | **`phase2_benchmark_ranking.csv`** | Ranking dos 7 modelos com AMEX Score, ROC AUC, AUPRC, F1 (OOF). |
 | **`phase4_ensembles_ranking.csv`** | Ranking: Voting (0.7920) > Stacking (0.7918) > Blending (0.7943*). |
-| **`phase5_final_blind_test.csv`** | Métricas oficiais do teste cego: AMEX 0.7931, ROC AUC 0.9618, Recall 0.9197. |
+| **`phase5_final_test.csv`** | Métricas oficiais do teste final: AMEX 0.7931, ROC AUC 0.9618, Recall 0.9197. |
 | **`results_phase[1-5].md`** | Relatórios analíticos detalhados de cada fase experimental. |
 | **`plots/*.png`** | Figuras geradas para o artigo científico. |
 
@@ -178,7 +178,7 @@ python -m src.phases.run_phase1_poc        # Provas de Conceito
 python -m src.phases.run_phase2_benchmark  # Campeonato Aberto (7 modelos)
 python -m src.phases.run_phase3_optuna     # Otimização Bayesiana (Optuna)
 python -m src.phases.run_phase4_ensembles  # Meta-Classificadores
-python -m src.phases.run_phase5_final_test # Teste Cego Final
+python -m src.phases.run_phase5_final_test # Teste Final
 ```
 
 Alternativamente, o notebook `notebook_pipeline_completo.ipynb` executa todo o fluxo sequencialmente.

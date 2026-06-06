@@ -1,4 +1,4 @@
-# Fase 5: Teste Cego e Simulação de Produção (Avaliação Final)
+# Fase 5: Teste Final e Simulação de Produção (Avaliação Final)
 
 ## 1. Objetivo da Fase 5
 
@@ -14,9 +14,9 @@ Diferente da Fase 4 — cujo propósito metodológico era comparar metodologias 
 2. **Espelhamento de Arquitetura:** A base isolada de teste foi submetida à mesma máscara de redução de dimensionalidade validada na Fase 1, contendo apenas as 400 variáveis mais densas.
 3. **Mecanismo de Decisão:** Utilizou-se o *Soft Voting Classifier*, calculando a média aritmética simples das probabilidades emitidas pelos três especialistas preditivos para determinar o risco final de cada novo cliente.
 
-## 3. Resultados Oficiais do Teste Cego
+## 3. Resultados Oficiais do Teste Final
 
-O modelo não apenas confirmou sua estabilidade, como **superou** as métricas obtidas na validação cruzada da Fase 4 (saltando de um AMEX Score de 0.7920 para 0.7931). Esse aumento empírico no teste cego é a prova estatística definitiva de que a arquitetura não sofreu de *overfitting* (sobreajuste), sendo altamente capaz de generalizar padrões financeiros para novos indivíduos.
+O modelo não apenas confirmou sua estabilidade, como **superou** as métricas obtidas na validação cruzada da Fase 4 (saltando de um AMEX Score de 0.7920 para 0.7931). Esse aumento empírico no teste final é a prova estatística definitiva de que a arquitetura não sofreu de *overfitting* (sobreajuste), sendo altamente capaz de generalizar padrões financeiros para novos indivíduos.
 
 A tabela abaixo consolida as métricas finais da arquitetura:
 

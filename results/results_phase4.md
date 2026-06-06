@@ -55,4 +55,4 @@ O fato do *Voting Classifier* (média matemática estrita) ter superado o *Stack
 
 A arquitetura **Voting Classifier (Composição: LightGBM + XGBoost + CatBoost)** é declarada a vencedora absoluta do processo de desenvolvimento e *Tuning* metodológico.
 
-**Próximos Passos:** O projeto avança para a **Fase 5 (Teste Cego)**, simulando a implantação do modelo em produção na matriz trancada de 20% do início do projeto.
+**Próximos Passos:** O projeto avança para a **Fase 5 (Teste Final)**, simulando a implantação do modelo em produção na matriz trancada de 20% do início do projeto.
