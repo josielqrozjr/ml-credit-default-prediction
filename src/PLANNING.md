@@ -21,11 +21,11 @@ Este documento é o guia interno de engenharia para a construção do orquestrad
 - [X] Coletar métricas OOF (Out-Of-Fold) e gerar ranking preliminar pelo AMEX Score.
 
 ## Fase 3: Otimização Suprema (Optuna + GPU)
-- [ ] Desenvolver `run_phase3_optuna.py`.
-- [ ] Isolar automaticamente o "Top 3" modelos da Fase 2 (provavelmente LGBM, XGB e CatBoost).
-- [ ] Configurar função objetivo do Optuna maximizando a *AMEX Metric*.
-- [ ] Executar otimização bayesiana (ex: 50 a 100 *trials*) utilizando aceleração por GPU.
-- [ ] Salvar os hiperparâmetros campeões em disco (`best_params.json`).
+- [X] Desenvolver `run_phase3_optuna.py`.
+- [X] Isolar automaticamente o "Top 3" modelos da Fase 2 (provavelmente LGBM, XGB e CatBoost).
+- [X] Configurar função objetivo do Optuna maximizando a *AMEX Metric*.
+- [X] Executar otimização bayesiana (ex: 50 a 100 *trials*) utilizando aceleração por GPU.
+- [X] Salvar os hiperparâmetros campeões em disco (`optuna_best_params.json`).
 
 ## Fase 4: Meta-Classificadores (O Limite de Performance)
 - [ ] Desenvolver `run_phase4_ensembles.py`.
