@@ -23,7 +23,7 @@ from imblearn.under_sampling import RandomUnderSampler
 
 # Importações do nosso projeto
 from config import RANDOM_SEED, RESULTS_DIR, TRAIN_DATA_PATH, SELECTED_FEATURES_PATH, GPU_AVAILABLE, DEVICE
-from src.evaluation.metrics import evaluate_model
+from app.evaluation.metrics import evaluate_model
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(message)s")
 logger = logging.getLogger(__name__)

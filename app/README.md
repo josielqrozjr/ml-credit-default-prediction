@@ -1,142 +1,104 @@
-# Arquitetura Estrutural do Pipeline de Dados e Engenharia de Atributos
+# Diretório de Modelos e Benchmarking: Detecção de Inadimplência
 
-**Título do Trabalho:** Benchmarking de Algoritmos na Detecção de Inadimplência em Cartões de Crédito: De Modelos Tradicionais a Meta-Classificadores  
-**Orientador:** Prof. Joelton  
+Este diretório contém os códigos e as definições metodológicas para a avaliação dos algoritmos de classificação. O objetivo desta etapa é comparar o desempenho de diferentes modelos matemáticos na previsão de inadimplência (target) utilizando a base de dados tratada nas fases anteriores.
 
-Este documento apresenta a especificação técnica detalhada de todas as etapas que compõem o pipeline híbrido de processamento de dados desenvolvidos para a base da American Express (AMEX). O pipeline foi projetado sob a ótica de engenharia de software de alta performance, utilizando uma arquitetura combinada (**DuckDB + Polars**) para viabilizar o processamento de mais de 5.5 milhões de registros sem estouro de memória RAM (*Out of Memory*), preparando a base de dados para o subsequente benchmark de 10 modelos de Machine Learning.
-
----
-
-## 1. Fase Inicial: Carga de Dados e Extração de Schema
-Antes do início de qualquer transformação matemática, o pipeline executa um mapeamento dinâmico de tipos através do DuckDB diretamente sobre arquivos Parquet particionados nativos em disco (`data_*.parquet`). O dataset bruto possui um formato longitudinal (série temporal incompleta) composto por **5.531.451 linhas** distribuídas por faturas mensais de clientes, contendo cerca de 190 variáveis originais altamente mascaradas e normalizadas.
+Para evitar alto custo computacional e garantir a validade científica, a avaliação foi dividida em um funil de quatro fases. 
 
 ---
 
-## 2. Fase 1: Engenharia Temporal de Primeira Ordem (DuckDB)
-Esta etapa atua na dimensão longitudinal dos dados. O objetivo é capturar a dinâmica de evolução financeira do cliente de uma fatura para a próxima, gerando atributos baseados no histórico sequencial imediato. A computação é otimizada via *Window Functions* SQL executadas diretamente em disco pelo DuckDB.
+## 1. Estrutura de Fases do Benchmark
 
-### Tabela 1: Atributos de Tendência Sequencial (Fase Temporal)
+A execução dos modelos segue uma ordem de validação por etapas. A saída de uma fase justifica as configurações da fase seguinte.
 
-| Atributo / Sufixo | Tipo de Dado | Descrição Matemática / Lógica | Objetivo Preditivo no Cenário de Risco |
+| Fase | Objetivo | Escopo de Execução | Justificativa Metodológica |
 | :--- | :--- | :--- | :--- |
-| `[Feature]_diff1` | Numérico (`Float32`) | $X_{t} - X_{t-1}$ <br>Onde $X_t$ é o valor da variável na fatura atual e $X_{t-1}$ é o valor na fatura imediatamente anterior, calculados através da janela `LAG() OVER (PARTITION BY customer_ID ORDER BY S_2)`. | Medir a volatilidade, aceleração de gastos ou velocidade de endividamento de curto prazo do tomador de crédito. |
-| `[Feature]_changed`| Binário (`Int8`: 0 ou 1) | $\begin{cases} 1, & \text{se } X_{t} \neq X_{t-1} \\ 0, & \text{se } X_{t} = X_{t-1} \end{cases}$ <br>Retorna `0` se o primeiro registro for nulo (fatura inicial). | Mapear transições explícitas de estado comportamental ou cadastral ocorridas entre faturas consecutivas. |
-
-### O Papel das Variáveis Categóricas na Engenharia Temporal
-A base da AMEX possui 11 variáveis categóricas mapeadas oficiais (`B_30`, `B_38`, `D_114`, `D_116`, `D_117`, `D_120`, `D_126`, `D_63`, `D_64`, `D_66`, `D_68`). 
-Nesta etapa, elas recebem um tratamento de **bloqueio de colinearidade aritmética**:
-* **Isolamento de Redundância:** É matematicamente inválido calcular a diferença numérica (`_diff1`) sobre dados categóricos, mesmo quando mascarados como inteiros (ex: subversão de status `3` menos status `1` não possui significado econômico ou de crédito). 
-* **Extração de Instabilidade:** Em contrapartida, as variáveis categóricas são as geradoras exclusivas das flags `_changed`. Identificar se um cliente alterou seu código de comportamento de bureaus ou tipo de residência financeira (`_changed = 1`) indica quebras de padrão de estabilidade, um forte sinal preditivo para a iminência de um *default*.
+| **Fase 1: Provas de Conceito** | Validar empiricamente a utilidade do Feature Selection (FS) e a abordagem de Balanceamento. | Modelos: Regressão Logística e XGBoost.<br>Testes: (Com FS vs. Sem FS) e (Algorítmico vs. Undersampling vs. Sem Balanceamento). | Evita testar todas as combinações em todos os modelos. Comprova as hipóteses iniciais nos dois extremos algorítmicos (um modelo linear e um ensemble de árvores). |
+| **Fase 2: Campeonato Aberto** | Estabelecer a linha de base de desempenho para todos os algoritmos escolhidos. | 10 Modelos rodando com hiperparâmetros padrão (default), base enxuta (400 variáveis) e balanceamento algorítmico. | Permite uma comparação nivelada e com baixo custo computacional inicial. Identifica os algoritmos que melhor se adaptam à estrutura de dados da AMEX. |
+| **Fase 3: Otimização de Hiperparâmetros** | Encontrar o limite de performance dos melhores algoritmos identificados na Fase 2. | Algoritmo Optuna aplicado apenas no Top 3 modelos da Fase 2. Uso de aceleração por GPU. | O método de otimização bayesiana (Optuna) é mais rápido e eficiente que o GridSearch tradicional. Aplicá-lo apenas no Top 3 economiza recursos de processamento. |
+| **Fase 4: Meta-Classificadores** | Combinar as previsões dos modelos otimizados para reduzir variância e erro. | Stacking, Blending e Voting Classifier utilizando os modelos ajustados na Fase 3. | Modelos baseados na combinação de classificadores tendem a apresentar maior robustez contra *overfitting*. |
 
 ---
 
-## 3. Fase 2: Agregação Latitudinal de Clientes (Polars)
-Esta etapa executa uma transformação geométrica na matriz de dados, convertendo o formato longitudinal (múltiplas faturas por cliente) para um formato estritamente latitudinal (**uma única linha por cliente**). O motor *Lazy* escrito em Rust/C++ do Polars condensa os 5.531.451 registros brutos em exatamente **458.913 clientes únicos**, gerando uma matriz robusta de **3.264 colunas** de alta densidade informativa.
+## 2. Seleção e Justificativa dos Algoritmos
 
-### Tabela 2: Métricas de Compressão e Perfis Estatísticos (Agregação)
+O benchmark final é composto por 10 algoritmos, distribuídos em quatro categorias principais. Modelos clássicos como *Decision Tree* e *AdaBoost* foram removidos do escopo. A *Decision Tree* sofre *overfitting* em dados de alta dimensão, enquanto o *AdaBoost* é sensível a *outliers* (comuns em dados financeiros). 
 
-| Atributo Gerado / Sufixo | Escopo de Aplicação | Operação Matemática Base | Racional de Risco de Crédito |
-| :--- | :--- | :--- | :--- |
-| `_mean` | Variáveis Numéricas | $\frac{1}{n}\sum_{i=1}^{n} X_i$ | Fornece o patamar médio histórico de gastos, saldos ou atrasos do cliente, removendo ruídos sazonais isolados. |
-| `_std` | Variáveis Numéricas | $\sqrt{\frac{1}{n-1}\sum_{i=1}^{n}(X_i - \bar{X})^2}$ | Quantifica a instabilidade financeira. Altos desvios indicam descontrole no fluxo de caixa ou picos atípicos de utilização de limite. |
-| `_min` | Variáveis Numéricas | Valor Mínimo Retido | Identifica a menor exposição ou melhor estado histórico de liquidez financeira do cliente na série estudada. |
-| `_max` | Variáveis Numéricas | Valor Máximo Retido | Captura o teto de estresse financeiro, pico de endividamento ou maior atraso registrado em bureau. |
-| `_last` | Todas as Variáveis | Último valor temporal disponível | O estado mais recente e atualizado do cliente antes do fechamento da janela de observação. Possui peso crítico para o modelo. |
-| `_first` | Categóricas Originais | Primeiro valor temporal registrado | Registra o ponto de partida do cliente na série histórica, servindo de âncora comportamental para análises de evolução. |
-| `_total_delta` | Numéricas Originais | $X_{last} - X_{first}$ | Medir a variação absoluta líquida do cliente entre o início e o fim do período monitorado (crescimento ou redução de exposição). |
-| `_trend_ratio` | Numéricas Originais | $\frac{X_{last}}{\bar{X} + 1e-5}$ | Fornece uma métrica de desvio recente. Identifica se o comportamento atual está acima ou abaixo da média histórica do próprio indivíduo. |
-| `_pos_ratio` | Numéricas Originais | $\frac{1}{n}\sum \mathbb{I}(Diff_t > 0)$ | Proporção de meses em que o cliente aumentou o valor da variável. Indica tendência de crescimento persistente da métrica. |
-| `_avg_monthly_slope` | Numéricas Originais | $\frac{X_{last} - X_{first}}{\text{Count de Meses}}$ | Proxy simplificada de inclinação linear. Avalia o ritmo ou velocidade média mensal com que a feature financeira variou. |
-| `_total_changes` | Flags `_changed` | $\sum (X_{changed})$ | Soma total das ocorrências de transições. Mede o volume bruto de instabilidade ou mudanças de postura do cliente. |
-| `_change_frequency` | Flags `_changed` | Média das flags `_changed` | Percentual de meses em que o cliente sofreu alteração de categoria, indicando volatilidade sistêmica ou comportamental. |
-| `_changed_recently` | Flags `_changed` | Último estado da flag | Indica se o cliente alterou de comportamento cadastral ou de perfil exatamente na fatura mais recente. |
-| `_nunique` | Categóricas Originais | Contagem de valores distintos | Avalia a diversidade de estados. Clientes que transitam por muitas categorias diferentes de bureaus exibem perfis erráticos. |
-| `_count` | Todas as Variáveis | Contagem de registros válidos | Mede a densidade da informação. Em risco, a quantidade de meses preenchidos reflete a maturidade da conta e o tempo de relacionamento. |
+Para substituí-los, foram incluídos o CatBoost e o LightGBM. A tabela abaixo detalha a escolha do portfólio de teste:
 
-### O Papel das Variáveis Categóricas na Agregação
-Nesta fase, ocorre a separação de rotas algorítmicas estruturais no Polars para evitar contaminação estatística:
-* **Bloqueio de Métricas Contínuas:** As 11 variáveis categóricas originais têm o cálculo de `mean`, `std`, `min` e `max` rigidamente bloqueados. Calcular a média aritmética de categorias mascaradas induziria os futuros modelos de benchmark a assumirem uma ordenação linear inexistente.
-* **Agregação Baseada em Estado e Frequência:** O comportamento das categóricas é resumido puramente por métricas de estado atual (`_last`), estado histórico inicial (`_first`), contagem de transições distintas (`_nunique`) e atividade (`_count`). Além disso, as flags binárias de mudança geradas no DuckDB (`_changed`) entram em uma rota matemática secundária exclusiva, onde são sumarizadas via contagem absoluta (`_total_changes`) e taxa de ocorrência cumulativa (`_change_frequency`).
+| Categoria | Modelo | Justificativa Técnica para Inclusão |
+| :--- | :--- | :--- |
+| **Modelos Tradicionais (Baseline)** | **Regressão Logística (LR)** | Representante linear paramétrico. Sensível à multicolinearidade. Usado para provar a eficácia da seleção de variáveis. |
+| | **K-Nearest Neighbors (KNN)** | Modelo baseado em distância. Útil para capturar agrupamentos locais de perfis de inadimplência. |
+| **Redes Neurais** | **ANN (Multi-Layer Perceptron)** | Capacidade de mapear interações não-lineares complexas através de múltiplas camadas ocultas. |
+| **Ensembles Homogêneos (Árvores)** | **Random Forest** | Baseado em *Bagging*. Cria variabilidade usando amostras e subconjuntos de variáveis, reduzindo a variância geral em relação a uma árvore simples. |
+| | **XGBoost** | Baseado em *Gradient Boosting*. Estrutura robusta contra valores ausentes e alto desempenho de convergência, com suporte nativo a GPU. |
+| | **LightGBM** | Algoritmo rápido que constrói árvores por folha (leaf-wise). Incluído por ter sido o algoritmo que extraiu as métricas de importância no Feature Selection. |
+| | **CatBoost** | Baseado em árvores simétricas. Lida de forma otimizada com as 22 variáveis categóricas mapeadas no pipeline sem a necessidade de codificação prévia. |
+| **Meta-Classificadores** | **Voting Classifier** | Combina as previsões dos modelos base por média simples de probabilidade (*soft voting*), suavizando os erros individuais. |
+| | **Stacking** | Treina um modelo final sobre as previsões (usando validação cruzada) dos modelos base. Corrige tendências de erro dos classificadores subjacentes. |
+| | **Blending** | Variação do Stacking que utiliza uma partição *holdout* fixa para treinar o meta-classificador. Mais rápido computacionalmente e mitiga o risco de vazamento de dados. |
 
 ---
 
-## 4. Fase 3: Fusão de Rótulos (*Merge*) e Amostragem Estratificada
-Para garantir a integridade estatística do projeto e impedir vazamento de dados (*data leak*), o pipeline executa o cruzamento (*Inner Join*) com a base de gabarito e divide os dados utilizando o motor de janela do Polars de forma puramente nativa em memória RAM.
+## 3. Diretrizes de Execução e Prevenção de Vazamento de Dados
 
-### Tabela 3: Volumetria e Distribuição de Classes pós-Estratificação
+Algumas decisões técnicas foram adotadas para garantir a integridade dos resultados:
 
-| Subconjunto Gerado | Volumetria (Linhas) | Proporção de Colunas | Distribuição da Classe Alvo (`target = 1`) | Função Arquitetural no TCC |
-| :--- | :--- | :--- | :--- | :--- |
-| **Dataset Total Consolidado** | 458.913 | 3.265 *(3.264 + target)* | ~25.8936% de Inadimplência | Base consolidada em memória após o Join relacional. |
-| **Treino Inicial (80%)** | **367.130** | 3.265 | **25.8933%** | Submetido exclusivamente à seleção de atributos e treinamento algorítmico. |
-| **Validação / Teste (20%)** | **91.783** | 3.265 | **25.8937%** | Base mantida sob isolamento absoluto (gabarito oculto) para simular o ambiente produtivo real. |
-
-*Nota Metodológica:* A variação infinitesimal na proporção do target observada entre Treino e Teste (apenas $0.0004\%$) valida cientificamente a precisão da técnica de divisão baseada em *funções de ordenação por janela* do Polars, assegurando que ambos os conjuntos sejam réplicas populacionais idênticas.
-
----
-
-## 5. Fase 4: Seleção Híbrida de Atributos Contextualizada (Polars + LightGBM)
-Visando contornar a **Maldição da Dimensionalidade** (reduzindo de 3.265 para **400 colunas** de alto impacto), esta etapa aplica um funil de filtragem rigoroso implementado estritamente sobre a base de treino de 80%. Esta abordagem descarta técnicas tradicionais de balanceamento físico (como SMOTE ou Undersampling), adotando em seu lugar o **Aprendizado Sensível ao Custo** (*Cost-Sensitive Learning*).
-
-### Tabela 4: Especificação do Funil de Feature Selection Inteligente
-
-| Filtro / Estágio | Tipo de Filtro | Threshold Aplicado | Racional Técnico e Contexto AMEX |
-| :--- | :--- | :--- | :--- |
-| **Filtro de Missing Absoluto** | Estático (Polars) | `0.999` (99.9%) | **Preservação de Dados Ausentes (MNAR):** Remove apenas colunas 100% vazias. Variáveis com alta taxa de nulos (ex: 95%) são mantidas intencionalmente, pois a ausência do dado em crédito é um forte sinal preditivo que o LightGBM converte em regras automáticas de decisão. |
-| **Filtro de Quase-Constantes** | Estático (Polars) | `0.999` (99.9%) | Descarta variáveis sem variância estatística, onde o mesmo valor se repete de forma unânime na base, economizando poder de processamento. |
-| **Filtro de Colinearidade Exata**| Estático (Pandas) | `0.98` (98.0%) | Identifica e remove "recursos clones" altamente correlacionados gerados pelas agregações matemáticas, eliminando redundância severa. |
-| **Filtro de Importância por Árvore**| Algorítmico (LightGBM)| Top **400** Melhores Features baseadas em **Gain** | Treinamento de um estimador auxiliar veloz de 200 iterações. O cálculo do ganho avalia o quanto cada feature efetivamente reduz a entropia (entropia de Shannon) da inadimplência. Recursos com ganho zero ou irrelevantes são eliminados. |
-| **Balanceamento Algorítmico** | Hiperparâmetro | `is_unbalance: True` | Atuando dentro do LightGBM auxiliar, ele altera os pesos na função de perda (*Loss Function*). Isso força a árvore avaliadora a penalizar severamente o erro na classe minoritária, garantindo que colunas cruciais para prever inadimplentes não fossem descartadas em prol da maioria. |
+* **Isolamento da Base de Teste:** A base de teste (20%) não é exposta a nenhuma etapa do *Feature Selection* ou balanceamento de dados. 
+* **Espelhamento de Dimensão:** O filtro de seleção (400 colunas) é calculado apenas na base de treino. A lista resultante (arquivo `.txt`) é usada como máscara para aplicar o mesmo corte nas colunas da base de teste antes da entrada nos modelos. Isso garante conformidade de formato sem vazamento de informação (*data leakage*).
+* **Foco no Balanceamento Algorítmico:** Devido à natureza financeira da base, técnicas de superamostragem (*oversampling*) física, como SMOTE, tendem a criar dados sintéticos irreais. O benchmark priorizará o balanceamento via função de custo (ex: `class_weight` ou `scale_pos_weight`), penalizando matematicamente os erros cometidos na classe minoritária.
+* **Aceleração por Hardware:** Modelos compatíveis (como XGBoost e CatBoost) serão executados via placa de vídeo dedicada (GPU) durante a Fase 3 para viabilizar a otimização de dezenas de hiperparâmetros em tempo hábil.
+Essa é uma excelente visão de organização de projeto. No mundo da engenharia de software e pesquisa reproduzível, **a melhor prática é separar os dois documentos**.
+* **Validação Cruzada Estratificada:** Durante todas as fases de treinamento e otimização, os modelos são submetidos a um `StratifiedKFold` (5 partições). Isso garante que a proporção da classe minoritária (25,89%) seja matematicamente idêntica em cada dobra de validação, estabilizando as métricas e mitigando o risco de sobreajuste local.
+* **Avaliação Orientada ao Domínio Financeiro:** Embora métricas padrão como ROC-AUC e F1-Score sejam coletadas, a otimização dos hiperparâmetros (Fase 3) buscará maximizar a **Métrica Oficial da AMEX** (uma composição ponderada entre o Índice de Gini Normalizado e a taxa de captura de *default* nos top 4% de risco). Isso alinha o modelo estritamente às necessidades de negócio de uma instituição financeira real.
+* **Preservação Categórica Nativa:** Variáveis originalmente categóricas e indicadoras de transição de estado não foram submetidas a *One-Hot Encoding* prévio. Elas mantêm sua tipagem nominal na base selecionada, permitindo que algoritmos como CatBoost e LightGBM construam partições de árvore otimizadas internamente, preservando a densidade da informação.
 
 ---
 
-## 6. Diagrama de Arquitetura do Pipeline
+## 4. Defesa Metodológica da Redução de Dimensionalidade
+
+A base completa gerada na etapa de agregação possui 3.265 variáveis. No entanto, ela será utilizada integralmente apenas durante a **Fase 1**. A partir da Fase 2, o benchmark prosseguirá exclusivamente com as 400 variáveis mantidas pelo *Feature Selection*. Essa decisão estrutural baseia-se em três pilares metodológicos:
+
+1. **Validação de Hipótese Empírica:** A Fase 1 atua como prova empírica. Ao comparar a performance da Regressão Logística e do XGBoost na base completa *vs.* base reduzida, o objetivo é confirmar que as 400 variáveis concentram a capacidade preditiva do conjunto, indicando que as 2.865 variáveis eliminadas representam colinearidade ou ruído.
+Em ciência, nós não assumimos que o nosso *Feature Selection* é perfeito; nós provamos isso.
+A sua hipótese é: *"As 400 colunas selecionadas pelo LightGBM contêm praticamente toda a informação útil para prever a inadimplência, e as outras 2.865 colunas são ruído ou redundância"*.
+
+* A Fase 1 existe única e exclusivamente para **comprovar essa hipótese empiricamente**. Quando você rodar o XGBoost com as 3.265 colunas e depois com as 400 colunas, você observará que o ROC-AUC será quase idêntico (ou até melhor na base menor), mas o tempo de treino cairá drasticamente. Uma vez provado isso no papel (com tabelas e números no seu TCC), você não precisa mais carregar o "peso morto" de 2.800 colunas inúteis para o resto da pesquisa.
+
+2. **Mitigação da Maldição da Dimensionalidade:** Executar os 10 algoritmos em mais de 3.000 dimensões causaria falhas algorítmicas pontuais. O cálculo de proximidade geométrica do KNN perde precisão matemática em alta dimensionalidade, enquanto a Regressão Logística e as Redes Neurais (ANN) enfrentariam multicolinearidade extrema, prejudicando a convergência. Avalie o impacto:
+* **KNN:** Ele calcula distâncias geométricas entre os clientes. Em 3.000 dimensões, a matemática do KNN entra em colapso (as distâncias ficam todas iguais). Ele perderia a precisão completamente.
+* **Regressão Logística e Redes Neurais (ANN):** Teriam que calcular pesos para 3.000 variáveis, a grande maioria sendo pura colinearidade (variáveis que dizem a mesma coisa). Isso causaria um *overfitting* violento e problemas de convergência matemática.
+
+3. **Princípio da Parcimônia (Navalha de Ockham):** Sob a premissa estatística de que modelos mais simples devem ser priorizados quando entregam performance comparável, a manutenção sistêmica de 3.265 variáveis representaria um consumo injustificável de recursos computacionais (RAM e VRAM), lentificando as fases de otimização estendida. Na academia, existe um princípio de que *"entre dois modelos com a mesma performance, o modelo mais simples é sempre o melhor"*.
+
+* Se a Fase 1 provar que 400 colunas entregam o mesmo poder de fogo que 3.000 colunas, manter as 3.000 para o resto do campeonato seria apenas um desperdício injustificável de energia elétrica e memória da GPU. O seu *Feature Selection* criou um novo "Padrão Ouro" de dados para a sua pesquisa.
+
+## 5. Métricas de Avaliação do Benchmark
+
+A avaliação dos classificadores utiliza um conjunto de métricas adequadas para bases com desbalanceamento de classes e aplicáveis ao domínio financeiro. A otimização não depende de uma métrica única, garantindo a análise sob diferentes perspectivas de custo e eficiência.
+
+A tabela a seguir detalha o escopo de avaliação do benchmark:
+
+| Métrica | Descrição e Cálculo | Justificativa no Contexto de Crédito |
+| :--- | :--- | :--- |
+| **Métrica Oficial AMEX** | Média entre o Gini Normalizado Ponderado e a Taxa de Captura nos Top 4% de risco. | Métrica principal (Norte) da Fase 3. Reflete a prioridade do negócio: ordenar os clientes por probabilidade de *default* e identificar os piores ofensores na faixa de maior risco. |
+| **ROC-AUC** | Área sob a curva ROC (Taxa de Verdadeiros Positivos *vs.* Falsos Positivos). | Avalia a capacidade global de separação do modelo entre inadimplentes e bons pagadores, independentemente do limiar (threshold) de corte escolhido. |
+| **AUPRC (Average Precision)** | Área sob a curva de Precision *vs.* Recall. | Métrica superior à ROC-AUC para cenários de alto desbalanceamento. Penaliza duramente modelos que geram muitos falsos positivos na classe minoritária. |
+| **F1-Score** | Média harmônica matemática entre Precision e Recall. | Força o equilíbrio do modelo. Impede que algoritmos obtenham pontuações altas apenas aprovando todos os clientes ou apenas negando crédito para todos. |
+| **Precision (Precisão)** | Verdadeiros Positivos / (Verdadeiros Positivos + Falsos Positivos). | Mede o custo do alarme falso. Baixa precisão indica que o modelo está negando crédito para bons pagadores, gerando perda de receita para a instituição. |
+| **Recall (Sensibilidade)** | Verdadeiros Positivos / (Verdadeiros Positivos + Falsos Negativos). | Mede a capacidade de proteção financeira. Baixo recall indica que o modelo falhou em detectar inadimplentes reais, gerando prejuízo direto por calote. |
+
+# 6. Roadmap Visual do Benchmark
+
 ```mermaid
 graph TD
-    subgraph "1. Pipeline de Dados"
-        subgraph "1. [DuckDB] Preparação da Série Temporal"
-            RAW["Dados Brutos AMEX <br/>5.531.451 x 190 "]
-            FE["Engenharia Temporal <br/>Window Functions: <br/>_diff1 e _changed"]
-        end
-
-        subgraph "2. [Polars] Conversão Tabular e Target"
-            AGG["Agregação de Clientes <br/>458.913 x 3.264"]
-            MERGE["Merge com Labels <br/>458.913 x 3.265"]
-        end
-
-        subgraph "3. [Polars] Isolamento e Estratificação (80/20)"
-            SPLIT["Split Estratificado"]
-            TESTE["Teste/Validação 20% <br/>91.783 linhas <br/>Target: 25.8937%"]
-            TREINO["Treino 80% <br/>367.130 linhas <br/>Target: 25.8933%"]
-        end
-
-        subgraph "4. [LightGBM] Redução de Dimensionalidade"
-            FS["Feature Selection <br/>22 categóricas nativas <br/>+ Filtros Estáticos"]
-            FINAL["Dataset Treino Final <br/>367.130 x 400"]
-        end
-    end
-
-    subgraph "2. Treinamento dos Modelos"
-        MODELS["Benchmark <br/>Métricas de avaliação"]
-    end
-
-    RAW --> FE
-    FE --> AGG
-    AGG --> MERGE
-    MERGE --> SPLIT
-    SPLIT --> TREINO
-    SPLIT --> TESTE
-    TREINO --> FS
-    FS --> FINAL
-    FINAL --> MODELS
+    A[Fase 1: Provas de Conceito<br/>Validação de FS e Balanceamento] -->|Justifica o corte para 400 variáveis| B(Fase 2: Campeonato Aberto<br/>7 Modelos com Configurações Padrão)
+    B -->|Elimina os 4 piores| C(Fase 3: Otimização Optuna<br/>Busca Matemática Extrema no Top 3)
+    C -->|Exporta os 3 Modelos Elite| D{Fase 4: Meta-Classificadores}
+    D --> E[Voting Classifier<br/>Média dos 3]
+    D --> F[Stacking Classifier<br/>Um modelo aprende com os 3]
+    D --> G[Blending Classifier<br/>Holdout dos 3]
+    E -.-> H((Comparação Final))
+    F -.-> H((Comparação Final))
+    G -.-> H((Comparação Final))
 ```
-
-## 7. Próximos Passos: Execução do Benchmarking de Classificadores
-Com a conclusão bem-sucedida deste pipeline, os dados encontram-se matematicamente higienizados, enriquecidos e dimensionalmente otimizados. Conforme o escopo delimitado pelo título escolhido, a matriz de treino resultante de **400 colunas selecionadas** e a matriz de validação isolada servirão como base para a execução de um amplo e rigoroso **Benchmarking de 10 Modelos**, cobrindo o espectro completo da evolução da ciência de dados:
-
-1. **Modelos Tradicionais (Linha de Base):** *Logistic Regression, KNN (K-Nearest Neighbors)* e *Decision Tree*.
-2. **Modelos Baseados em Boosting e Ensembles Homogêneos:** *AdaBoost, Random Forest* e *XGBoost*.
-3. **Arquiteturas de Redes Neurais:** *ANN (Multi-Layer Perceptron - MLP)*.
-4. **Meta-Classificadores Avançados (Ensembles Heterogêneos):** *Voting Classifier, Blending* (com Logistic Regression, KNN, Random Forest, XGBoost) e *Stacking* (com Naive Bayes, KNN, Logistic Regression).
-
-Todos os modelos serão avaliados competitivamente sob as métricas de ROC-AUC, F1-Score, Precisão e a métrica de sensibilidade oficial estipulada pela American Express.

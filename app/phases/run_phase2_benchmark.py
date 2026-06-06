@@ -21,8 +21,8 @@ from sklearn.impute import SimpleImputer
 
 # Importações do projeto
 from config import RANDOM_SEED, RESULTS_DIR, TRAIN_DATA_PATH, SELECTED_FEATURES_PATH, N_SPLITS
-from src.evaluation.metrics import evaluate_model
-from src.models.registry import MODEL_REGISTRY
+from app.evaluation.metrics import evaluate_model
+from app.models.registry import MODEL_REGISTRY
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(message)s")
 logger = logging.getLogger(__name__)

@@ -18,9 +18,9 @@ import logging
 import gc
 
 # Importações das classes do Pipeline
-from pipeline.feature_engineering import EngenhariaTemporal
-from pipeline.aggregation import AgregadorClientePolars
-from pipeline.feature_selection import SelecionadorFeaturesAMEX
+from app.pipeline.feature_engineering import EngenhariaTemporal
+from app.pipeline.aggregation import AgregadorClientePolars
+from app.pipeline.feature_selection import SelecionadorFeaturesAMEX
 
 logging.basicConfig(
     level=logging.INFO,
@@ -126,7 +126,7 @@ def main():
     # =========================================================
     logger.info("=== INICIANDO FASE 3: MERGE E SPLIT ESTRATIFICADO ===")
     try:
-        from pipeline.merge_split import merge_and_split
+        from app.pipeline.merge_split import merge_and_split
         merge_and_split(caminho_features, caminho_labels_glob, caminho_output_dir)
         logger.info("Fase 3 (Merge e Split) concluída com sucesso.")
     except Exception as e:

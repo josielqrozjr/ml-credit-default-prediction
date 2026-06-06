@@ -30,7 +30,7 @@ from config import (
     RANDOM_SEED, RESULTS_DIR, RESULTS_BEST_MODELS, TRAIN_DATA_PATH, 
     SELECTED_FEATURES_PATH, N_SPLITS, OPTUNA_GRIDS, GPU_AVAILABLE
 )
-from src.evaluation.metrics import evaluate_model
+from app.evaluation.metrics import evaluate_model
 
 # Suprime warnings do Optuna e do LightGBM para manter o terminal limpo
 optuna.logging.set_verbosity(optuna.logging.WARNING)
