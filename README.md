@@ -15,10 +15,9 @@ ml-credit-default-prediction/
 ├── README.md                         # Este arquivo (descrição geral dos artefatos)
 ├── config.py                         # Configurações globais, hiperparâmetros e caminhos
 ├── requirements.txt                  # Dependências do projeto
-├── main.ipynb                       # Notebook unificado com pipeline completo
+├── main.ipynb                        # Notebook unificado com pipeline completo
 │
 ├── app/                              # Código-fonte completo do projeto
-│   ├── README.md                     # Documentação técnica detalhada do pipeline
 │   ├── pipeline/
 │   │   ├── convert_parquet.py        # Conversão CSV → Parquet (DuckDB)
 │   │   ├── feature_engineering.py    # Engenharia temporal (diff1, changed) via SQL
@@ -39,6 +38,7 @@ ml-credit-default-prediction/
 │   │   ├── lightgbm_model.py         # LightGBM (is_unbalance=True)
 │   │   └── catboost_model.py         # CatBoost (auto_class_weights=Balanced)
 │   └── phases/
+│       ├── README.md                 # Documentação técnica detalhada do pipeline
 │       ├── run_phase0_pipeline.py    # Fase 0: Pipeline completo (DuckDB + Polars + Merge + Feature Selection)
 │       ├── run_phase1_poc.py         # Fase 1: Provas de Conceito
 │       ├── run_phase2_benchmark.py   # Fase 2: Campeonato Aberto (7 modelos)
